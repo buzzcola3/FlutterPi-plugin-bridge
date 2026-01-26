@@ -72,6 +72,8 @@ struct texture *texture_new(struct texture_registry *reg);
 
 int64_t texture_get_id(struct texture *texture);
 
+int texture_mark_frame_available(struct texture *texture);
+
 int texture_push_frame(struct texture *texture, const struct texture_frame *frame);
 
 int texture_push_unresolved_frame(struct texture *texture, const struct unresolved_texture_frame *frame);

@@ -211,6 +211,11 @@ int64_t texture_get_id(struct texture *texture) {
     return texture->id;
 }
 
+int texture_mark_frame_available(struct texture *texture) {
+    ASSERT_NOT_NULL(texture);
+    return texture->registry->interface.mark_frame_available(texture->registry->userdata, texture->id);
+}
+
 static int push_frame(
     struct texture *texture,
     bool is_resolved,

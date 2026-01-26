@@ -12,6 +12,7 @@ struct _FlTextureRegistrar {
 
 struct _FlTexture {
     GObject parent_instance;
+    struct texture *texture;
     int64_t texture_id;
 };
 
@@ -32,6 +33,7 @@ static void fl_texture_class_init(FlTextureClass *klass) {
 
 static void fl_texture_init(FlTexture *self) {
     self->texture_id = -1;
+    self->texture = NULL;
 }
 
 FlTextureRegistrar *fl_texture_registrar_new_for_flutterpi(struct flutterpi *flutterpi) {
@@ -45,21 +47,37 @@ int64_t fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, FlT
     g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), -1);
     g_return_val_if_fail(FL_IS_TEXTURE(texture), -1);
 
-    (void) registrar;
-    (void) texture;
-    return -1;
+    if (texture->texture != NULL) {
+        return texture->texture_id;
+    }
+
+    struct texture *native_texture = flutterpi_create_texture(registrar->flutterpi);
+    if (native_texture == NULL) {
+        return -1;
+    }
+
+    texture->texture = native_texture;
+    texture->texture_id = texture_get_id(native_texture);
+    return texture->texture_id;
 }
 
 void fl_texture_registrar_unregister_texture(FlTextureRegistrar *registrar, FlTexture *texture) {
     g_return_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar));
     g_return_if_fail(FL_IS_TEXTURE(texture));
+
     (void) registrar;
-    (void) texture;
+    if (texture->texture) {
+        texture_destroy(texture->texture);
+        texture->texture = NULL;
+        texture->texture_id = -1;
+    }
 }
 
 void fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *registrar, FlTexture *texture) {
     g_return_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar));
     g_return_if_fail(FL_IS_TEXTURE(texture));
     (void) registrar;
-    (void) texture;
+    if (texture->texture) {
+        texture_mark_frame_available(texture->texture);
+    }
 }

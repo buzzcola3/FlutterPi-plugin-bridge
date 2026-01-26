@@ -16,29 +16,31 @@ struct _FlEventChannel {
     FlEventChannelCancelCallback on_cancel;
     gpointer user_data;
     GDestroyNotify destroy_notify;
-    FlEventSinkData *sink_data;
 };
 
 G_DEFINE_TYPE(FlEventChannel, fl_event_channel, G_TYPE_OBJECT)
 
-typedef struct {
-    FlEventChannel *channel;
-    FlEventSink sink;
-    gpointer user_data;
-} FlEventSinkData;
+static GHashTable *event_sink_map = NULL;
+
+static void fl_event_channel_global_map_init(void) {
+    if (event_sink_map == NULL) {
+        event_sink_map = g_hash_table_new(g_direct_hash, g_direct_equal);
+    }
+}
 
 static gboolean fl_event_channel_send_event(FlValue *event, GError **error, gpointer user_data) {
-    FlEventSinkData *data = user_data;
-    if (!data || !data->channel) {
+    fl_event_channel_global_map_init();
+    FlEventChannel *channel = g_hash_table_lookup(event_sink_map, user_data);
+    if (!channel) {
         return FALSE;
     }
 
-    GBytes *encoded = fl_method_codec_encode_success_envelope(data->channel->codec, event, error);
+    GBytes *encoded = fl_method_codec_encode_success_envelope(channel->codec, event, error);
     if (!encoded) {
         return FALSE;
     }
 
-    fl_binary_messenger_send_on_channel_no_response(data->channel->messenger, data->channel->name, encoded);
+    fl_binary_messenger_send_on_channel_no_response(channel->messenger, channel->name, encoded);
     g_bytes_unref(encoded);
     return TRUE;
 }
@@ -65,21 +67,19 @@ static void fl_event_channel_message_handler(FlBinaryMessenger *messenger,
     gboolean ok = TRUE;
     if (g_strcmp0(method, "listen") == 0) {
         if (self->on_listen) {
-            if (self->sink_data) {
-                g_free(self->sink_data);
-                self->sink_data = NULL;
+            fl_event_channel_global_map_init();
+            if (self->user_data != NULL) {
+                g_hash_table_replace(event_sink_map, self->user_data, self);
             }
-            self->sink_data = g_new0(FlEventSinkData, 1);
-            self->sink_data->channel = self;
-            ok = self->on_listen(self, args, fl_event_channel_send_event, self->sink_data, &error);
+            ok = self->on_listen(self, args, fl_event_channel_send_event, self->user_data, &error);
         }
     } else if (g_strcmp0(method, "cancel") == 0) {
         if (self->on_cancel) {
             ok = self->on_cancel(self, self->user_data, &error);
         }
-        if (self->sink_data) {
-            g_free(self->sink_data);
-            self->sink_data = NULL;
+        fl_event_channel_global_map_init();
+        if (self->user_data != NULL) {
+            g_hash_table_remove(event_sink_map, self->user_data);
         }
     }
 
@@ -115,8 +115,9 @@ static void fl_event_channel_finalize(GObject *object) {
     if (self->destroy_notify && self->user_data) {
         self->destroy_notify(self->user_data);
     }
-    if (self->sink_data) {
-        g_free(self->sink_data);
+    fl_event_channel_global_map_init();
+    if (self->user_data != NULL) {
+        g_hash_table_remove(event_sink_map, self->user_data);
     }
     g_free(self->name);
 

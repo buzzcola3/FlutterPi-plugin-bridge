@@ -197,6 +197,7 @@ if (BUILD_FLUTTER_LINUX_GTK_SHIM)
     src/flutter_linux_gtk_shim/fl_event_channel.c
     src/flutter_linux_gtk_shim/fl_texture_registrar.c
     src/flutter_linux_gtk_shim/fl_plugin_registrar.c
+    src/flutter_linux_gtk_shim/fl_plugin_registrant.c
   )
 
   target_link_libraries(flutter_linux_gtk_shim PUBLIC
@@ -220,6 +221,7 @@ if (BUILD_FLUTTER_LINUX_GTK_SHIM)
 
   target_link_libraries(flutter-pi PUBLIC flutter_linux_gtk_shim)
   target_link_options(flutter-pi PUBLIC LINKER:--export-dynamic)
+  target_compile_definitions(flutterpi_module PUBLIC FLUTTERPI_ENABLE_GTK_SHIM)
 endif()
 
 # GCC prior to 11.3 reports false positives for missing-field-initializers warning.
