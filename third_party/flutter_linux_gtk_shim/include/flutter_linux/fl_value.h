@@ -8,8 +8,14 @@
 
 G_BEGIN_DECLS
 
-#define FL_TYPE_VALUE (fl_value_get_type())
+#define fl_value_get_type fl_value_get_gtype
 G_DECLARE_FINAL_TYPE(FlValue, fl_value, FL, VALUE, GObject)
+#undef fl_value_get_type
+
+#undef FL_TYPE_VALUE
+#define FL_TYPE_VALUE (fl_value_get_gtype())
+
+GType fl_value_get_gtype(void);
 
 typedef enum {
     FL_VALUE_TYPE_NULL,
@@ -25,6 +31,7 @@ typedef enum {
     FL_VALUE_TYPE_MAP,
 } FlValueType;
 
+FlValueType fl_value_get_type(FlValue *value);
 FlValueType fl_value_get_type_id(FlValue *value);
 
 FlValue *fl_value_new_null(void);

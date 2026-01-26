@@ -35,7 +35,9 @@ struct _FlValue {
     } value;
 };
 
+#define fl_value_get_type fl_value_get_gtype
 G_DEFINE_TYPE(FlValue, fl_value, G_TYPE_OBJECT)
+#undef fl_value_get_type
 
 static void fl_value_finalize(GObject *object) {
     FlValue *self = FL_VALUE(object);
@@ -102,6 +104,10 @@ static void fl_value_init(FlValue *self) {
 FlValueType fl_value_get_type_id(FlValue *value) {
     g_return_val_if_fail(FL_IS_VALUE(value), FL_VALUE_TYPE_NULL);
     return value->type;
+}
+
+FlValueType fl_value_get_type(FlValue *value) {
+    return fl_value_get_type_id(value);
 }
 
 static FlValue *fl_value_new_common(FlValueType type) {

@@ -110,6 +110,9 @@ pkg_check_modules(LIBUDEV REQUIRED IMPORTED_TARGET libudev)
 pkg_check_modules(GLIB IMPORTED_TARGET glib-2.0)
 pkg_check_modules(GOBJECT IMPORTED_TARGET gobject-2.0)
 pkg_check_modules(GIO IMPORTED_TARGET gio-2.0)
+if (BUILD_FLUTTER_LINUX_GTK_SHIM)
+  pkg_check_modules(GTK IMPORTED_TARGET gtk+-3.0)
+endif()
 if (BUILD_OPENAUTOFLUTTER_PLUGIN)
   pkg_check_modules(EPOXY REQUIRED IMPORTED_TARGET epoxy)
 endif()
@@ -201,6 +204,9 @@ if (BUILD_OPENAUTOFLUTTER_PLUGIN)
     PkgConfig::GOBJECT
     PkgConfig::GIO
   )
+  if (GTK_FOUND)
+    target_link_libraries(flutterpi_module PUBLIC PkgConfig::GTK)
+  endif()
 endif()
 
 target_compile_options(flutterpi_module PUBLIC
@@ -229,6 +235,7 @@ if (BUILD_FLUTTER_LINUX_GTK_SHIM)
     src/flutter_linux_gtk_shim/fl_texture_registrar.c
     src/flutter_linux_gtk_shim/fl_texture_gl.c
     src/flutter_linux_gtk_shim/fl_plugin_registrar.c
+    src/flutter_linux_gtk_shim/fl_plugin_registry.c
     src/flutter_linux_gtk_shim/fl_plugin_registrant.c
   )
 
@@ -289,6 +296,9 @@ if (BUILD_OPENAUTOFLUTTER_PLUGIN)
   )
 
   target_link_libraries(openautoflutter_plugin PRIVATE flutter_linux_gtk_shim PkgConfig::EPOXY Threads::Threads ${CMAKE_DL_LIBS})
+  if (GTK_FOUND)
+    target_link_libraries(openautoflutter_plugin PRIVATE PkgConfig::GTK)
+  endif()
 
   # OpenAutoTransport (prebuilt) fetch + link
   set(OPENAUTO_TRANSPORT_VERSION "v0.0.24" CACHE STRING "OpenAutoTransport release tag" FORCE)
