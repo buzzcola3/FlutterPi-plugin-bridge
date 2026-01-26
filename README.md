@@ -4,6 +4,8 @@
 
 # flutter-pi
 A light-weight Flutter Engine Embedder for Raspberry Pi. Inspired by https://github.com/chinmaygarde/flutter_from_scratch.
+
+This fork, **FlutterPi-plugin-bridge**, adds a GTK-style Linux plugin bridge so unmodified Flutter Linux plugins can be built and registered.
 Flutter-pi also runs without X11, so you don't need to boot into Raspbian Desktop & have X11 and LXDE load up; just boot into the command-line.
 
 You can now **theoretically** run every flutter app you want using flutter-pi, including apps using packages & plugins, just that you'd have to build the platform side of the plugins you'd like to use yourself.
@@ -30,6 +32,7 @@ If you encounter issues running flutter-pi on any of the supported platforms lis
 1. **[Building flutter-pi on the Raspberry Pi](#-building-flutter-pi-on-the-raspberry-pi)**  
 1.1 [Dependencies](#dependencies)  
 1.2 [Compiling](#compiling)  
+1.3 [GTK plugin bridge (Linux plugins)](#gtk-plugin-bridge-linux-plugins)  
 2. **[Running your App on the Raspberry Pi](#-running-your-app-on-the-raspberry-pi)**  
 2.1 [Configuring your Raspberry Pi](#configuring-your-raspberry-pi)  
 2.2 [Building the App](#building-the-app-new-method-linux-only)  
@@ -71,7 +74,7 @@ If you encounter issues running flutter-pi on any of the supported platforms lis
 
 3. Install cmake, graphics, system libraries and fonts:
     ```shell
-    sudo apt install cmake libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdrm-dev libgbm-dev ttf-mscorefonts-installer fontconfig libsystemd-dev libinput-dev libudev-dev  libxkbcommon-dev
+    sudo apt install cmake libgl1-mesa-dev libgles2-mesa-dev libegl1-mesa-dev libdrm-dev libgbm-dev ttf-mscorefonts-installer fontconfig libsystemd-dev libinput-dev libudev-dev libxkbcommon-dev libgtk-3-dev
     ```
 
     If you want to use the [gstreamer video player](#gstreamer-video-player), install these too:
@@ -110,6 +113,14 @@ If you encounter issues running flutter-pi on any of the supported platforms lis
     ```bash
     sudo make install
     ```
+
+  ### GTK plugin bridge (Linux plugins)
+  This fork ships a GTK-style shim that allows unmodified Flutter Linux plugins to compile and register.
+
+  Build flags:
+  - `-DBUILD_FLUTTER_LINUX_GTK_SHIM=ON`
+  - `-DBUILD_OPENAUTOFLUTTER_PLUGIN=ON` (optional)
+  - `-DBUILD_GTK_SHIM_TEST_PLUGIN=ON` (optional test channel)
 
 ## 🚀 Running your App on the Raspberry Pi
 ### Configuring your Raspberry Pi
