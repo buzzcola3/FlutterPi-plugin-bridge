@@ -1416,17 +1416,17 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
 
     flutterpi->flutter.engine = engine;
 
-#ifdef FLUTTERPI_ENABLE_GTK_SHIM
-    extern void flutterpi_register_gtk_plugins(struct flutterpi *flutterpi);
-    flutterpi_register_gtk_plugins(flutterpi);
-#endif
-
     engine_result = procs->RunInitialized(engine);
     if (engine_result != kSuccess) {
         LOG_ERROR("Could not run the flutter engine. FlutterEngineRunInitialized: %s\n", FLUTTER_RESULT_TO_STRING(engine_result));
         ok = EIO;
         goto fail_deinitialize_engine;
     }
+
+#ifdef FLUTTERPI_ENABLE_GTK_SHIM
+    extern void flutterpi_register_gtk_plugins(struct flutterpi *flutterpi);
+    flutterpi_register_gtk_plugins(flutterpi);
+#endif
 
     ok = locales_add_to_fl_engine(flutterpi->locales, engine, procs->UpdateLocales);
     if (ok != 0) {
