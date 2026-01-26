@@ -38,6 +38,8 @@ option(TRY_BUILD_GSTREAMER_AUDIO_PLAYER_PLUGIN "Don't throw an error if the gstr
 
 option(BUILD_SENTRY_PLUGIN "Include the sentry plugin in the finished binary. Allows for crash reporting to sentry.io." OFF)
 
+option(BUILD_FLUTTER_LINUX_GTK_SHIM "Build GTK-style plugin shim library (fl_* APIs) for Linux plugins." ON)
+
 option(BUILD_CHARSET_CONVERTER_PLUGIN "Include the charset converter plugin in the finished binary." OFF)
 option(ENABLE_OPENGL "Build with EGL/OpenGL rendering support." ON)
 option(TRY_ENABLE_OPENGL "Don't throw an error if EGL/OpenGL aren't found, instead just build without EGL/OpenGL support in that case." ON)
@@ -98,6 +100,9 @@ pkg_check_modules(LIBSYSTEMD REQUIRED IMPORTED_TARGET libsystemd)
 pkg_check_modules(LIBINPUT REQUIRED IMPORTED_TARGET libinput)
 pkg_check_modules(LIBXKBCOMMON REQUIRED IMPORTED_TARGET xkbcommon)
 pkg_check_modules(LIBUDEV REQUIRED IMPORTED_TARGET libudev)
+pkg_check_modules(GLIB IMPORTED_TARGET glib-2.0)
+pkg_check_modules(GOBJECT IMPORTED_TARGET gobject-2.0)
+pkg_check_modules(GIO IMPORTED_TARGET gio-2.0)
 
 # find pthreads
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -172,6 +177,50 @@ target_compile_options(flutterpi_module PUBLIC
   $<$<CONFIG:RelWithDebInfo>:-O3 -Wall -Wextra -Wno-sign-compare -ggdb -DNDEBUG>
   $<$<CONFIG:Release>:-O3 -Wall -Wextra -Wno-sign-compare -DNDEBUG>
 )
+
+# GTK-style plugin shim library for Linux plugins
+if (BUILD_FLUTTER_LINUX_GTK_SHIM)
+  if (NOT GLIB_FOUND OR NOT GOBJECT_FOUND OR NOT GIO_FOUND)
+    message(SEND_ERROR "GLib/GObject/GIO not found. Install libglib2.0-dev and libgobject-2.0-dev (and gio) or disable BUILD_FLUTTER_LINUX_GTK_SHIM.")
+  endif()
+
+  add_library(
+    flutter_linux_gtk_shim
+    SHARED
+    src/flutter_linux_gtk_shim/fl_binary_messenger.c
+    src/flutter_linux_gtk_shim/fl_method_codec.c
+    src/flutter_linux_gtk_shim/fl_standard_method_codec.c
+    src/flutter_linux_gtk_shim/fl_value.c
+    src/flutter_linux_gtk_shim/fl_method_call.c
+    src/flutter_linux_gtk_shim/fl_method_response.c
+    src/flutter_linux_gtk_shim/fl_method_channel.c
+    src/flutter_linux_gtk_shim/fl_event_channel.c
+    src/flutter_linux_gtk_shim/fl_texture_registrar.c
+    src/flutter_linux_gtk_shim/fl_plugin_registrar.c
+  )
+
+  target_link_libraries(flutter_linux_gtk_shim PUBLIC
+    PkgConfig::GLIB
+    PkgConfig::GOBJECT
+    PkgConfig::GIO
+  )
+
+  target_include_directories(flutter_linux_gtk_shim PUBLIC
+    ${CMAKE_SOURCE_DIR}/third_party/flutter_linux_gtk_shim/include
+    ${CMAKE_SOURCE_DIR}/third_party/flutter_embedder_header/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_BINARY_DIR}
+  )
+
+  target_compile_options(flutter_linux_gtk_shim PUBLIC
+    $<$<CONFIG:Debug>:-O0 -Wall -Wextra -Wno-sign-compare -Werror -ggdb -U_FORTIFY_SOURCE -DDEBUG>
+    $<$<CONFIG:RelWithDebInfo>:-O3 -Wall -Wextra -Wno-sign-compare -ggdb -DNDEBUG>
+    $<$<CONFIG:Release>:-O3 -Wall -Wextra -Wno-sign-compare -DNDEBUG>
+  )
+
+  target_link_libraries(flutter-pi PUBLIC flutter_linux_gtk_shim)
+  target_link_options(flutter-pi PUBLIC LINKER:--export-dynamic)
+endif()
 
 # GCC prior to 11.3 reports false positives for missing-field-initializers warning.
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
