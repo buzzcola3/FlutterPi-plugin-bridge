@@ -58,6 +58,8 @@ FlValue *fl_value_get_list_value(FlValue *value, size_t index);
 FlValue *fl_value_get_map_key(FlValue *value, size_t index);
 FlValue *fl_value_get_map_value(FlValue *value, size_t index);
 
+FlValue *fl_value_lookup_string(FlValue *map, const gchar *key);
+
 // Mutation
 void fl_value_append(FlValue *list, FlValue *value);
 void fl_value_set(FlValue *map, FlValue *key, FlValue *value);

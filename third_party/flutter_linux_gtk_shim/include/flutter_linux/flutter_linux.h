@@ -10,6 +10,7 @@
 #include "fl_method_response.h"
 #include "fl_plugin_registrar.h"
 #include "fl_standard_method_codec.h"
+#include "fl_texture_gl.h"
 #include "fl_texture_registrar.h"
 #include "fl_value.h"
 

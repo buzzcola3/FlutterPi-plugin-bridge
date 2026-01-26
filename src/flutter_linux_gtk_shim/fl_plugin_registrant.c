@@ -2,7 +2,7 @@
 #include "flutter_linux/fl_plugin_registrar.h"
 
 #include "fl_plugin_registrar_internal.h"
-#include "flutter-pi.h"
+#include "flutterpi_shim.h"
 
 __attribute__((weak)) void fl_register_plugins(FlPluginRegistrar *registrar);
 

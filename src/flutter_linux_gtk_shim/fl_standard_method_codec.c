@@ -4,7 +4,6 @@
 #include <gio/gio.h>
 #include <string.h>
 
-#include "flutter-pi.h"
 #include "platformchannel.h"
 
 struct _FlStandardMethodCodec {

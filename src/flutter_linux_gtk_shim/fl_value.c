@@ -301,6 +301,26 @@ FlValue *fl_value_get_map_value(FlValue *value, size_t index) {
     return g_ptr_array_index(value->value.map.values, index);
 }
 
+FlValue *fl_value_lookup_string(FlValue *map, const gchar *key) {
+    g_return_val_if_fail(FL_IS_VALUE(map), NULL);
+    g_return_val_if_fail(key != NULL, NULL);
+    if (map->type != FL_VALUE_TYPE_MAP || map->value.map.keys == NULL) {
+        return NULL;
+    }
+
+    for (guint i = 0; i < map->value.map.keys->len; i++) {
+        FlValue *k = g_ptr_array_index(map->value.map.keys, i);
+        if (k && fl_value_get_type_id(k) == FL_VALUE_TYPE_STRING) {
+            const gchar *kstr = fl_value_get_string(k);
+            if (kstr && g_strcmp0(kstr, key) == 0) {
+                return fl_value_get_map_value(map, i);
+            }
+        }
+    }
+
+    return NULL;
+}
+
 void fl_value_append(FlValue *list, FlValue *value) {
     g_return_if_fail(FL_IS_VALUE(list));
     g_return_if_fail(FL_IS_VALUE(value));

@@ -140,7 +140,7 @@ FlEventChannel *fl_event_channel_new(FlBinaryMessenger *messenger, const gchar *
     FlEventChannel *channel = g_object_new(FL_TYPE_EVENT_CHANNEL, NULL);
     channel->messenger = g_object_ref(messenger);
     channel->name = g_strdup(name);
-    channel->codec = codec ? g_object_ref(codec) : fl_standard_method_codec_new();
+    channel->codec = codec ? g_object_ref(codec) : FL_METHOD_CODEC(fl_standard_method_codec_new());
 
     fl_binary_messenger_set_message_handler_on_channel(channel->messenger, channel->name,
                                                        fl_event_channel_message_handler, channel, NULL);

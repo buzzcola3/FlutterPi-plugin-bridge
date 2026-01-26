@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "fl_binary_messenger_internal.h"
-#include "flutter-pi.h"
+#include "flutterpi_shim.h"
 #include "platformchannel.h"
 #include "pluginregistry.h"
 

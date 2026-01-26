@@ -39,6 +39,8 @@ option(TRY_BUILD_GSTREAMER_AUDIO_PLAYER_PLUGIN "Don't throw an error if the gstr
 option(BUILD_SENTRY_PLUGIN "Include the sentry plugin in the finished binary. Allows for crash reporting to sentry.io." OFF)
 
 option(BUILD_FLUTTER_LINUX_GTK_SHIM "Build GTK-style plugin shim library (fl_* APIs) for Linux plugins." ON)
+option(BUILD_OPENAUTOFLUTTER_PLUGIN "Build OpenAutoFlutter plugin from source." OFF)
+set(OPENAUTOFLUTTER_DIR "${CMAKE_SOURCE_DIR}/../OpenAutoFlutter" CACHE PATH "Path to the OpenAutoFlutter repo")
 
 option(BUILD_CHARSET_CONVERTER_PLUGIN "Include the charset converter plugin in the finished binary." OFF)
 option(ENABLE_OPENGL "Build with EGL/OpenGL rendering support." ON)
@@ -87,6 +89,10 @@ endif()
 
 project(flutter-pi LANGUAGES ${flutterpi_languages} VERSION "1.0.0")
 
+if (BUILD_OPENAUTOFLUTTER_PLUGIN)
+  enable_language(CXX)
+endif()
+
 message(STATUS "Generator .............. ${CMAKE_GENERATOR}")
 message(STATUS "Build Type ............. ${CMAKE_BUILD_TYPE}")
 
@@ -103,6 +109,9 @@ pkg_check_modules(LIBUDEV REQUIRED IMPORTED_TARGET libudev)
 pkg_check_modules(GLIB IMPORTED_TARGET glib-2.0)
 pkg_check_modules(GOBJECT IMPORTED_TARGET gobject-2.0)
 pkg_check_modules(GIO IMPORTED_TARGET gio-2.0)
+if (BUILD_OPENAUTOFLUTTER_PLUGIN)
+  pkg_check_modules(EPOXY REQUIRED IMPORTED_TARGET epoxy)
+endif()
 
 # find pthreads
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -154,6 +163,10 @@ add_library(
   src/plugins/services.c
 )
 
+if (BUILD_OPENAUTOFLUTTER_PLUGIN)
+  target_sources(flutterpi_module PRIVATE src/flutter_linux_gtk_shim/openautoflutter_registrant.c)
+endif()
+
 target_link_libraries(flutterpi_module PUBLIC
   PkgConfig::DRM
   PkgConfig::GBM
@@ -171,6 +184,18 @@ target_include_directories(flutterpi_module PUBLIC
   ${CMAKE_SOURCE_DIR}/src
   ${CMAKE_BINARY_DIR}
 )
+
+if (BUILD_OPENAUTOFLUTTER_PLUGIN)
+  target_include_directories(flutterpi_module PUBLIC
+    ${CMAKE_SOURCE_DIR}/third_party/flutter_linux_gtk_shim/include
+    ${OPENAUTOFLUTTER_DIR}/linux/include
+  )
+  target_link_libraries(flutterpi_module PUBLIC
+    PkgConfig::GLIB
+    PkgConfig::GOBJECT
+    PkgConfig::GIO
+  )
+endif()
 
 target_compile_options(flutterpi_module PUBLIC
   $<$<CONFIG:Debug>:-O0 -Wall -Wextra -Wno-sign-compare -Werror -ggdb -U_FORTIFY_SOURCE -DDEBUG>
@@ -196,6 +221,7 @@ if (BUILD_FLUTTER_LINUX_GTK_SHIM)
     src/flutter_linux_gtk_shim/fl_method_channel.c
     src/flutter_linux_gtk_shim/fl_event_channel.c
     src/flutter_linux_gtk_shim/fl_texture_registrar.c
+    src/flutter_linux_gtk_shim/fl_texture_gl.c
     src/flutter_linux_gtk_shim/fl_plugin_registrar.c
     src/flutter_linux_gtk_shim/fl_plugin_registrant.c
   )
@@ -222,6 +248,119 @@ if (BUILD_FLUTTER_LINUX_GTK_SHIM)
   target_link_libraries(flutter-pi PUBLIC flutter_linux_gtk_shim)
   target_link_options(flutter-pi PUBLIC LINKER:--export-dynamic)
   target_compile_definitions(flutterpi_module PUBLIC FLUTTERPI_ENABLE_GTK_SHIM)
+endif()
+
+# OpenAutoFlutter plugin build (uses GTK-style shim)
+if (BUILD_OPENAUTOFLUTTER_PLUGIN)
+  if (NOT BUILD_FLUTTER_LINUX_GTK_SHIM)
+    message(SEND_ERROR "BUILD_OPENAUTOFLUTTER_PLUGIN requires BUILD_FLUTTER_LINUX_GTK_SHIM")
+  endif()
+
+  if (NOT EXISTS ${OPENAUTOFLUTTER_DIR}/linux/openautoflutter_plugin.cc)
+    message(SEND_ERROR "OpenAutoFlutter plugin sources not found. Set OPENAUTOFLUTTER_DIR correctly.")
+  endif()
+
+  add_library(openautoflutter_plugin SHARED
+    ${OPENAUTOFLUTTER_DIR}/linux/openautoflutter_plugin.cc
+    ${OPENAUTOFLUTTER_DIR}/linux/oat_message_handlers.cpp
+    ${OPENAUTOFLUTTER_DIR}/linux/av/oa_video_texture.cc
+    ${OPENAUTOFLUTTER_DIR}/linux/common/SharedMemoryConsumer.cpp
+    ${OPENAUTOFLUTTER_DIR}/linux/av/h264_decoder.cc
+  )
+
+  if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(WARNING "OpenAutoTransport prebuilt libs are built with clang/libc++; consider configuring with CC=clang CXX=clang++ if you hit ABI/linker errors.")
+  endif()
+
+  set_target_properties(openautoflutter_plugin PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES)
+  target_compile_definitions(openautoflutter_plugin PRIVATE FLUTTER_PLUGIN_IMPL)
+
+  target_include_directories(openautoflutter_plugin PRIVATE
+    ${OPENAUTOFLUTTER_DIR}/linux/include
+    ${OPENAUTOFLUTTER_DIR}/linux/av
+    ${OPENAUTOFLUTTER_DIR}/linux/common
+    ${CMAKE_SOURCE_DIR}/third_party/flutter_linux_gtk_shim/include
+  )
+
+  target_link_libraries(openautoflutter_plugin PRIVATE flutter_linux_gtk_shim PkgConfig::EPOXY Threads::Threads ${CMAKE_DL_LIBS})
+
+  # OpenAutoTransport (prebuilt) fetch + link
+  set(OPENAUTO_TRANSPORT_VERSION "v0.0.24" CACHE STRING "OpenAutoTransport release tag" FORCE)
+  if (NOT DEFINED OPENAUTO_TRANSPORT_VARIANT)
+    string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" _proc)
+    if (_proc MATCHES "x86_64|amd64")
+      set(OPENAUTO_TRANSPORT_VARIANT "amd64_gnu")
+    elseif (_proc MATCHES "aarch64|arm64")
+      set(OPENAUTO_TRANSPORT_VARIANT "arm64_gnu")
+    else()
+      message(SEND_ERROR "Unsupported processor ${CMAKE_SYSTEM_PROCESSOR}; set OPENAUTO_TRANSPORT_VARIANT manually (amd64_gnu|amd64_musl|arm64_gnu|arm64_musl)")
+    endif()
+  endif()
+
+  set(_oat_base_url "https://github.com/buzzcola3/OpenAutoTransport/releases/download/${OPENAUTO_TRANSPORT_VERSION}")
+  set(_oat_prefix "${CMAKE_BINARY_DIR}/openautotransport/${OPENAUTO_TRANSPORT_VERSION}/prebuilt")
+  file(MAKE_DIRECTORY "${_oat_prefix}/include" "${_oat_prefix}/lib")
+
+  function(_oat_fetch _name _dest_dir _out_var)
+    set(_url "${_oat_base_url}/${_name}")
+    set(_dest "${_dest_dir}/${_name}")
+    set(_needs_fetch TRUE)
+    if (EXISTS "${_dest}")
+      file(SIZE "${_dest}" _size)
+      if (_size GREATER 0)
+        set(_needs_fetch FALSE)
+      else()
+        file(REMOVE "${_dest}")
+      endif()
+    endif()
+    if (_needs_fetch)
+      file(DOWNLOAD "${_url}" "${_dest}" SHOW_PROGRESS STATUS _status)
+      list(GET _status 0 _code)
+      if (NOT _code EQUAL 0)
+        message(SEND_ERROR "Failed to download ${_url}: ${_status}")
+      endif()
+      file(SIZE "${_dest}" _size_after)
+      if (NOT _size_after GREATER 0)
+        message(SEND_ERROR "Downloaded ${_url} but file is empty")
+      endif()
+    endif()
+    set(${_out_var} "${_dest}" PARENT_SCOPE)
+  endfunction()
+
+  _oat_fetch("wire.hpp" "${_oat_prefix}/include" _oat_wire_hpp)
+  _oat_fetch("transport.hpp" "${_oat_prefix}/include" _oat_transport_hpp)
+  _oat_fetch("wire.capnp.h" "${_oat_prefix}/include" _oat_wire_capnp_h)
+  _oat_fetch("wire.capnp.c++" "${_oat_prefix}/include" _oat_wire_capnp_cpp)
+
+  _oat_fetch("libopen_auto_transport-${OPENAUTO_TRANSPORT_VARIANT}.a" "${_oat_prefix}/lib" _oat_lib_path)
+  _oat_fetch("libcapnp-${OPENAUTO_TRANSPORT_VARIANT}.a" "${_oat_prefix}/lib" _oat_capnp_path)
+  _oat_fetch("libkj-${OPENAUTO_TRANSPORT_VARIANT}.a" "${_oat_prefix}/lib" _oat_kj_path)
+
+  add_library(open_auto_transport STATIC IMPORTED)
+  set_target_properties(open_auto_transport PROPERTIES IMPORTED_LOCATION "${_oat_lib_path}")
+  add_library(open_auto_transport_capnp STATIC IMPORTED)
+  set_target_properties(open_auto_transport_capnp PROPERTIES IMPORTED_LOCATION "${_oat_capnp_path}")
+  add_library(open_auto_transport_kj STATIC IMPORTED)
+  set_target_properties(open_auto_transport_kj PROPERTIES IMPORTED_LOCATION "${_oat_kj_path}")
+
+  target_include_directories(openautoflutter_plugin PRIVATE "${_oat_prefix}/include")
+  target_sources(openautoflutter_plugin PRIVATE "${_oat_wire_capnp_cpp}")
+  target_link_libraries(openautoflutter_plugin PRIVATE open_auto_transport open_auto_transport_capnp open_auto_transport_kj)
+
+  # libc++ required by OpenAutoTransport prebuilt libs
+  target_compile_options(openautoflutter_plugin PRIVATE -stdlib=libc++)
+  target_link_options(openautoflutter_plugin PRIVATE -stdlib=libc++)
+  target_link_libraries(openautoflutter_plugin PRIVATE c++ c++abi)
+
+  # FFmpeg (libav) for software H264 decoding
+  find_library(AVCODEC_LIB avcodec)
+  find_library(AVUTIL_LIB avutil)
+  find_library(SWSCALE_LIB swscale)
+  if (AVCODEC_LIB AND AVUTIL_LIB AND SWSCALE_LIB)
+    target_link_libraries(openautoflutter_plugin PRIVATE ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWSCALE_LIB})
+  endif()
+
+  target_link_libraries(flutter-pi PUBLIC openautoflutter_plugin)
 endif()
 
 # GCC prior to 11.3 reports false positives for missing-field-initializers warning.

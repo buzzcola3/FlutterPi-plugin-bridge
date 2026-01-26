@@ -4,7 +4,7 @@
 #include "fl_binary_messenger_internal.h"
 #include "fl_plugin_registrar_internal.h"
 #include "fl_texture_registrar_internal.h"
-#include "flutter-pi.h"
+#include "flutterpi_shim.h"
 
 struct _FlPluginRegistrar {
     GObject parent_instance;

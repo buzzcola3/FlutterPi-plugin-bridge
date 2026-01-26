@@ -91,7 +91,7 @@ FlMethodChannel *fl_method_channel_new(FlBinaryMessenger *messenger, const gchar
     FlMethodChannel *channel = g_object_new(FL_TYPE_METHOD_CHANNEL, NULL);
     channel->messenger = g_object_ref(messenger);
     channel->name = g_strdup(name);
-    channel->codec = codec ? g_object_ref(codec) : fl_standard_method_codec_new();
+    channel->codec = codec ? g_object_ref(codec) : FL_METHOD_CODEC(fl_standard_method_codec_new());
     return channel;
 }
 
