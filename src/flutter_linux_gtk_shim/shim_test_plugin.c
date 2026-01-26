@@ -11,6 +11,7 @@ static void shim_test_handle_method_call(FlMethodChannel *channel, FlMethodCall 
     const gchar *method = fl_method_call_get_name(method_call);
 
     if (method != NULL && strcmp(method, "ping") == 0) {
+        g_message("[gtk_shim_test] ping received");
         g_autoptr(FlValue) result = fl_value_new_string("pong");
         response = FL_METHOD_RESPONSE(fl_method_success_response_new(result));
     } else {
