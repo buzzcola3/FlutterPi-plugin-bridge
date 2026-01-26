@@ -117,6 +117,16 @@ If you encounter issues running flutter-pi on any of the supported platforms lis
     ```bash
     sudo raspi-config
     ```
+
+  ## 🧪 GTK shim test plugin
+  If you enable the shim test plugin, it registers a method channel named `gtk_shim_test`.
+  Calling `ping` returns `pong`.
+
+  Build flag:
+  - `-DBUILD_GTK_SHIM_TEST_PLUGIN=ON`
+
+  Example Dart call:
+  - `const MethodChannel('gtk_shim_test').invokeMethod<String>('ping')`
     
 2. Switch to console mode:
    `System Options -> Boot / Auto Login` and select `Console` or `Console (Autologin)`.

@@ -40,6 +40,7 @@ option(BUILD_SENTRY_PLUGIN "Include the sentry plugin in the finished binary. Al
 
 option(BUILD_FLUTTER_LINUX_GTK_SHIM "Build GTK-style plugin shim library (fl_* APIs) for Linux plugins." ON)
 option(BUILD_OPENAUTOFLUTTER_PLUGIN "Build OpenAutoFlutter plugin from source." OFF)
+option(BUILD_GTK_SHIM_TEST_PLUGIN "Build minimal GTK shim test plugin (gtk_shim_test)." OFF)
 set(OPENAUTOFLUTTER_DIR "${CMAKE_SOURCE_DIR}/../OpenAutoFlutter" CACHE PATH "Path to the OpenAutoFlutter repo")
 
 option(BUILD_CHARSET_CONVERTER_PLUGIN "Include the charset converter plugin in the finished binary." OFF)
@@ -165,6 +166,11 @@ add_library(
 
 if (BUILD_OPENAUTOFLUTTER_PLUGIN)
   target_sources(flutterpi_module PRIVATE src/flutter_linux_gtk_shim/openautoflutter_registrant.c)
+endif()
+
+if (BUILD_GTK_SHIM_TEST_PLUGIN)
+  target_sources(flutterpi_module PRIVATE src/flutter_linux_gtk_shim/shim_test_plugin.c)
+  target_compile_definitions(flutterpi_module PUBLIC BUILD_GTK_SHIM_TEST_PLUGIN)
 endif()
 
 target_link_libraries(flutterpi_module PUBLIC
