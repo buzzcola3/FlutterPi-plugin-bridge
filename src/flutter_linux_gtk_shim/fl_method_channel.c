@@ -110,8 +110,9 @@ void fl_method_channel_set_method_call_handler(FlMethodChannel *channel,
     channel->handler_destroy_notify = destroy_notify;
 
     fl_binary_messenger_set_message_handler_on_channel(channel->messenger, channel->name,
-                                                       handler ? fl_method_channel_message_handler : NULL, channel,
-                                                       NULL);
+                                                       handler ? fl_method_channel_message_handler : NULL,
+                                                       handler ? g_object_ref(channel) : NULL,
+                                                       handler ? g_object_unref : NULL);
 }
 
 static void fl_method_channel_on_invoke_response(GObject *source_object, GAsyncResult *result, gpointer user_data) {
