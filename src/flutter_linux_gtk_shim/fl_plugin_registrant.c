@@ -3,10 +3,19 @@
 
 #include "fl_plugin_registrar_internal.h"
 #include "flutterpi_shim.h"
+#include "plugin_loader.h"
 
 __attribute__((weak)) void fl_register_plugins(FlPluginRegistry *registry);
 
 void flutterpi_register_gtk_plugins(struct flutterpi *flutterpi) {
+    const char *plugin_list_path = flutterpi_get_plugin_list_path(flutterpi);
+    if (plugin_list_path != NULL && *plugin_list_path != '\0') {
+        struct gtk_plugin_loader *loader = gtk_plugin_loader_load(plugin_list_path, flutterpi);
+        if (loader != NULL) {
+            flutterpi_set_gtk_plugin_loader(flutterpi, loader);
+        }
+    }
+
     if (fl_register_plugins == NULL) {
         return;
     }

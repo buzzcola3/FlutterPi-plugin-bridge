@@ -1,6 +1,8 @@
 /.vscode
 /build
 /out
+/third_party
+/build-docker
 
 # CMake docs says it should not be checked in.
 CMakeUserPresets.json

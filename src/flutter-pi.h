@@ -92,6 +92,7 @@ struct drmdev;
 struct locales;
 struct vk_renderer;
 struct flutterpi;
+struct gtk_plugin_loader;
 
 /// TODO: Remove this
 extern struct flutterpi *flutterpi;
@@ -144,6 +145,8 @@ struct flutterpi_cmdline_args {
 
     bool has_drm_fd;
     int drm_fd;
+
+    char *plugin_list_path;
 };
 
 int flutterpi_fill_view_properties(bool has_orientation, enum device_orientation orientation, bool has_rotation, int rotation);
@@ -169,6 +172,11 @@ int flutterpi_respond_to_platform_message(
 );
 
 bool flutterpi_parse_cmdline_args(int argc, char **argv, struct flutterpi_cmdline_args *result_out);
+
+void flutterpi_set_gtk_plugin_loader(struct flutterpi *flutterpi, struct gtk_plugin_loader *loader);
+struct gtk_plugin_loader *flutterpi_get_gtk_plugin_loader(struct flutterpi *flutterpi);
+
+const char *flutterpi_get_plugin_list_path(struct flutterpi *flutterpi);
 
 struct texture_registry *flutterpi_get_texture_registry(struct flutterpi *flutterpi);
 

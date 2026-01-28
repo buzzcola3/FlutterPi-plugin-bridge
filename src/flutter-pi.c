@@ -48,6 +48,7 @@
 #include "modesetting.h"
 #include "pixel_format.h"
 #include "platformchannel.h"
+#include "plugin_loader.h"
 #include "pluginregistry.h"
 #include "plugins/raw_keyboard.h"
 #include "plugins/text_input.h"
@@ -142,9 +143,10 @@ OPTIONS:\n\
   --dummy-display-size \"width,height\" The width & height of the dummy display\n\
                              in pixels.\n\
 \n\
-  --drm-fd                   An opened and valid DRM file descriptor\n\
+    --drm-fd                   An opened and valid DRM file descriptor\n\
+    --plugin-list <path>       JSON list of GTK plugins to dlopen and register\n\
 \n\
-  -h, --help                 Show this help and exit.\n\
+    -h, --help                 Show this help and exit.\n\
 \n\
 EXAMPLES:\n\
   flutter-pi ~/hello_world_app\n\
@@ -250,6 +252,8 @@ struct flutterpi {
      */
     struct plugin_registry *plugin_registry;
 
+    struct gtk_plugin_loader *gtk_plugin_loader;
+
     /**
      * @brief Manages all external textures registered to the flutter engine.
      *
@@ -264,6 +268,7 @@ struct flutterpi {
     bool session_active;
 
     char *desired_videomode;
+    char *plugin_list_path;
 };
 
 struct device_id_and_fd {
@@ -1884,6 +1889,7 @@ bool flutterpi_parse_cmdline_args(int argc, char **argv, struct flutterpi_cmdlin
         { "dummy-display", no_argument, &dummy_display_int, 1 },
         { "dummy-display-size", required_argument, NULL, 's' },
         { "drm-fd", required_argument, NULL, 'f' },
+        { "plugin-list", required_argument, NULL, 'l' },
         { 0, 0, 0, 0 },
     };
     memset(result_out, 0, sizeof *result_out);
@@ -1898,11 +1904,12 @@ bool flutterpi_parse_cmdline_args(int argc, char **argv, struct flutterpi_cmdlin
     result_out->engine_argc = 0;
     result_out->engine_argv = NULL;
     result_out->drm_fd = -1;
+    result_out->plugin_list_path = NULL;
 
     finished_parsing_options = false;
     while (!finished_parsing_options) {
         longopt_index = 0;
-        opt = getopt_long(argc, argv, "+i:o:r:d:h:f", long_options, &longopt_index);
+        opt = getopt_long(argc, argv, "+i:o:r:d:h:f:l:", long_options, &longopt_index);
 
         switch (opt) {
             case 0:
@@ -2017,6 +2024,13 @@ valid_format:
                 result_out->drm_fd = fd;
                 break;
 
+            case 'l':;  // --plugin-list
+                result_out->plugin_list_path = strdup(optarg);
+                if (result_out->plugin_list_path == NULL) {
+                    return false;
+                }
+                break;
+
             case 'h': printf("%s", usage); return false;
 
             case '?':
@@ -2047,6 +2061,21 @@ valid_format:
     result_out->dummy_display = !!dummy_display_int;
 
     return true;
+}
+
+void flutterpi_set_gtk_plugin_loader(struct flutterpi *flutterpi, struct gtk_plugin_loader *loader) {
+    ASSERT_NOT_NULL(flutterpi);
+    flutterpi->gtk_plugin_loader = loader;
+}
+
+struct gtk_plugin_loader *flutterpi_get_gtk_plugin_loader(struct flutterpi *flutterpi) {
+    ASSERT_NOT_NULL(flutterpi);
+    return flutterpi->gtk_plugin_loader;
+}
+
+const char *flutterpi_get_plugin_list_path(struct flutterpi *flutterpi) {
+    ASSERT_NOT_NULL(flutterpi);
+    return flutterpi->plugin_list_path;
 }
 
 static int on_drmdev_open(const char *path, int flags, void **fd_metadata_out, void *userdata) {
@@ -2339,7 +2368,7 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
     struct tracer *tracer;
     struct window *window;
     void *engine_handle;
-    char *bundle_path, **engine_argv, *desired_videomode;
+    char *bundle_path, **engine_argv, *desired_videomode, *plugin_list_path;
     int ok, engine_argc, wakeup_fd;
 
     fpi = malloc(sizeof *fpi);
@@ -2380,6 +2409,7 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
 #endif
 
     desired_videomode = cmd_args.desired_videomode;
+    plugin_list_path = cmd_args.plugin_list_path;
 
     if (bundle_path == NULL) {
         LOG_ERROR("ERROR: Bundle path does not exist.\n");
@@ -2741,8 +2771,10 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
     fpi->flutter.aot_data = aot_data;
     fpi->drmdev = drmdev;
     fpi->plugin_registry = plugin_registry;
+    fpi->gtk_plugin_loader = NULL;
     fpi->texture_registry = texture_registry;
     fpi->libseat = libseat;
+    fpi->plugin_list_path = plugin_list_path;
     return fpi;
 
 fail_destroy_texture_registry:
@@ -2811,6 +2843,7 @@ fail_free_paths:
 
 fail_free_cmd_args:
     free(cmd_args.bundle_path);
+    free(cmd_args.plugin_list_path);
 
 fail_free_fpi:
     free(fpi);
@@ -2825,6 +2858,7 @@ void flutterpi_destroy(struct flutterpi *flutterpi) {
     pthread_mutex_destroy(&flutterpi->event_loop_mutex);
     texture_registry_destroy(flutterpi->texture_registry);
     plugin_registry_destroy(flutterpi->plugin_registry);
+    gtk_plugin_loader_destroy(flutterpi->gtk_plugin_loader);
     unload_flutter_engine_lib(flutterpi->flutter.engine_handle);
     user_input_destroy(flutterpi->user_input);
     compositor_unref(flutterpi->compositor);
@@ -2856,6 +2890,7 @@ void flutterpi_destroy(struct flutterpi *flutterpi) {
     close(flutterpi->wakeup_event_loop_fd);
     flutter_paths_free(flutterpi->flutter.paths);
     free(flutterpi->flutter.bundle_path);
+    free(flutterpi->plugin_list_path);
     free(flutterpi);
     return;
 }
