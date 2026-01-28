@@ -38,7 +38,7 @@ option(TRY_BUILD_GSTREAMER_AUDIO_PLAYER_PLUGIN "Don't throw an error if the gstr
 
 option(BUILD_SENTRY_PLUGIN "Include the sentry plugin in the finished binary. Allows for crash reporting to sentry.io." OFF)
 
-option(BUILD_FLUTTER_LINUX_GTK_SHIM "Build GTK-style plugin shim library (fl_* APIs) for Linux plugins." ON)
+set(BUILD_FLUTTER_LINUX_GTK_SHIM ON)
 option(BUILD_OPENAUTOFLUTTER_PLUGIN "Build OpenAutoFlutter plugin from source." OFF)
 option(BUILD_GTK_SHIM_TEST_PLUGIN "Build minimal GTK shim test plugin (gtk_shim_test)." OFF)
 set(OPENAUTOFLUTTER_DIR "${CMAKE_SOURCE_DIR}/../OpenAutoFlutter" CACHE PATH "Path to the OpenAutoFlutter repo")
@@ -110,9 +110,7 @@ pkg_check_modules(LIBUDEV REQUIRED IMPORTED_TARGET libudev)
 pkg_check_modules(GLIB IMPORTED_TARGET glib-2.0)
 pkg_check_modules(GOBJECT IMPORTED_TARGET gobject-2.0)
 pkg_check_modules(GIO IMPORTED_TARGET gio-2.0)
-if (BUILD_FLUTTER_LINUX_GTK_SHIM)
-  pkg_check_modules(GTK IMPORTED_TARGET gtk+-3.0)
-endif()
+pkg_check_modules(GTK IMPORTED_TARGET gtk+-3.0)
 if (BUILD_OPENAUTOFLUTTER_PLUGIN)
   pkg_check_modules(EPOXY REQUIRED IMPORTED_TARGET epoxy)
 endif()
@@ -215,60 +213,55 @@ target_compile_options(flutterpi_module PUBLIC
   $<$<CONFIG:Release>:-O3 -Wall -Wextra -Wno-sign-compare -DNDEBUG>
 )
 
-# GTK-style plugin shim library for Linux plugins
-if (BUILD_FLUTTER_LINUX_GTK_SHIM)
-  if (NOT GLIB_FOUND OR NOT GOBJECT_FOUND OR NOT GIO_FOUND)
-    message(SEND_ERROR "GLib/GObject/GIO not found. Install libglib2.0-dev and libgobject-2.0-dev (and gio) or disable BUILD_FLUTTER_LINUX_GTK_SHIM.")
-  endif()
-
-  add_library(
-    flutter_linux_gtk_shim
-    SHARED
-    src/flutter_linux_gtk_shim/fl_binary_messenger.c
-    src/flutter_linux_gtk_shim/fl_method_codec.c
-    src/flutter_linux_gtk_shim/fl_standard_method_codec.c
-    src/flutter_linux_gtk_shim/fl_value.c
-    src/flutter_linux_gtk_shim/fl_method_call.c
-    src/flutter_linux_gtk_shim/fl_method_response.c
-    src/flutter_linux_gtk_shim/fl_method_channel.c
-    src/flutter_linux_gtk_shim/fl_event_channel.c
-    src/flutter_linux_gtk_shim/fl_texture_registrar.c
-    src/flutter_linux_gtk_shim/fl_texture_gl.c
-    src/flutter_linux_gtk_shim/fl_plugin_registrar.c
-    src/flutter_linux_gtk_shim/fl_plugin_registry.c
-    src/flutter_linux_gtk_shim/fl_plugin_registrant.c
-  )
-
-  target_link_libraries(flutter_linux_gtk_shim PUBLIC
-    PkgConfig::GLIB
-    PkgConfig::GOBJECT
-    PkgConfig::GIO
-  )
-
-  target_include_directories(flutter_linux_gtk_shim PUBLIC
-    ${CMAKE_SOURCE_DIR}/third_party/flutter_linux_gtk_shim/include
-    ${CMAKE_SOURCE_DIR}/third_party/flutter_embedder_header/include
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_BINARY_DIR}
-  )
-
-  target_compile_options(flutter_linux_gtk_shim PUBLIC
-    $<$<CONFIG:Debug>:-O0 -Wall -Wextra -Wno-sign-compare -Werror -ggdb -U_FORTIFY_SOURCE -DDEBUG>
-    $<$<CONFIG:RelWithDebInfo>:-O3 -Wall -Wextra -Wno-sign-compare -ggdb -DNDEBUG>
-    $<$<CONFIG:Release>:-O3 -Wall -Wextra -Wno-sign-compare -DNDEBUG>
-  )
-
-  target_link_libraries(flutter-pi PUBLIC flutter_linux_gtk_shim)
-  target_link_options(flutter-pi PUBLIC LINKER:--export-dynamic)
-  target_compile_definitions(flutterpi_module PUBLIC FLUTTERPI_ENABLE_GTK_SHIM)
+# GTK-style plugin shim library for Linux plugins (always enabled)
+if (NOT GLIB_FOUND OR NOT GOBJECT_FOUND OR NOT GIO_FOUND)
+  message(SEND_ERROR "GLib/GObject/GIO not found. Install libglib2.0-dev and libgobject-2.0-dev (and gio).")
 endif()
+
+add_library(
+  flutter_linux_gtk_shim
+  SHARED
+  src/flutter_linux_gtk_shim/fl_binary_messenger.c
+  src/flutter_linux_gtk_shim/fl_method_codec.c
+  src/flutter_linux_gtk_shim/fl_standard_method_codec.c
+  src/flutter_linux_gtk_shim/fl_value.c
+  src/flutter_linux_gtk_shim/fl_method_call.c
+  src/flutter_linux_gtk_shim/fl_method_response.c
+  src/flutter_linux_gtk_shim/fl_method_channel.c
+  src/flutter_linux_gtk_shim/fl_event_channel.c
+  src/flutter_linux_gtk_shim/fl_texture_registrar.c
+  src/flutter_linux_gtk_shim/fl_texture_gl.c
+  src/flutter_linux_gtk_shim/fl_plugin_registrar.c
+  src/flutter_linux_gtk_shim/fl_plugin_registry.c
+  src/flutter_linux_gtk_shim/fl_plugin_registrant.c
+  src/plugin_loader.c
+)
+
+target_link_libraries(flutter_linux_gtk_shim PUBLIC
+  PkgConfig::GLIB
+  PkgConfig::GOBJECT
+  PkgConfig::GIO
+)
+
+target_include_directories(flutter_linux_gtk_shim PUBLIC
+  ${CMAKE_SOURCE_DIR}/third_party/flutter_linux_gtk_shim/include
+  ${CMAKE_SOURCE_DIR}/third_party/flutter_embedder_header/include
+  ${CMAKE_SOURCE_DIR}/src
+  ${CMAKE_BINARY_DIR}
+)
+
+target_compile_options(flutter_linux_gtk_shim PUBLIC
+  $<$<CONFIG:Debug>:-O0 -Wall -Wextra -Wno-sign-compare -Werror -ggdb -U_FORTIFY_SOURCE -DDEBUG>
+  $<$<CONFIG:RelWithDebInfo>:-O3 -Wall -Wextra -Wno-sign-compare -ggdb -DNDEBUG>
+  $<$<CONFIG:Release>:-O3 -Wall -Wextra -Wno-sign-compare -DNDEBUG>
+)
+
+target_link_libraries(flutter-pi PUBLIC flutter_linux_gtk_shim)
+target_link_options(flutter-pi PUBLIC LINKER:--export-dynamic)
+target_compile_definitions(flutterpi_module PUBLIC FLUTTERPI_ENABLE_GTK_SHIM)
 
 # OpenAutoFlutter plugin build (uses GTK-style shim)
 if (BUILD_OPENAUTOFLUTTER_PLUGIN)
-  if (NOT BUILD_FLUTTER_LINUX_GTK_SHIM)
-    message(SEND_ERROR "BUILD_OPENAUTOFLUTTER_PLUGIN requires BUILD_FLUTTER_LINUX_GTK_SHIM")
-  endif()
-
   if (NOT EXISTS ${OPENAUTOFLUTTER_DIR}/linux/openautoflutter_plugin.cc)
     message(SEND_ERROR "OpenAutoFlutter plugin sources not found. Set OPENAUTOFLUTTER_DIR correctly.")
   endif()
