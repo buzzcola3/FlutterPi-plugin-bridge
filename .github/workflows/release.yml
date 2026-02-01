@@ -120,12 +120,27 @@ jobs:
           cp -r ../dist/bin/flutter-pi .
 
           tar -cJf ../flutterpi-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz .
+
+          cd ..
+          if [ -f dist/bin/libflutter_linux_gtk.so ]; then
+            mkdir -p shim-artifact
+            cp -r dist/bin/libflutter_linux_gtk.so shim-artifact/
+            tar -cJf flutterpi-gtk-shim-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz -C shim-artifact .
+          fi
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: flutterpi-${{ matrix.target }}-${{ matrix.buildtype }}-tar-xz
           path: flutterpi-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz
+          if-no-files-found: error
+
+      - name: Upload gtk shim artifact
+        if: ${{ hashFiles('flutterpi-gtk-shim-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutterpi-gtk-shim-${{ matrix.target }}-${{ matrix.buildtype }}-tar-xz
+          path: flutterpi-gtk-shim-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz
           if-no-files-found: error
       
   publish:

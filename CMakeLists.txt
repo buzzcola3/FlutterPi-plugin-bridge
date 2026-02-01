@@ -218,7 +218,9 @@ if (NOT GLIB_FOUND OR NOT GOBJECT_FOUND OR NOT GIO_FOUND)
   message(SEND_ERROR "GLib/GObject/GIO not found. Install libglib2.0-dev and libgobject-2.0-dev (and gio).")
 endif()
 
-set(FLUTTER_LINUX_GTK_SHIM_SOURCES
+add_library(
+  flutter_linux_gtk_shim
+  SHARED
   src/flutter_linux_gtk_shim/fl_binary_messenger.c
   src/flutter_linux_gtk_shim/fl_method_codec.c
   src/flutter_linux_gtk_shim/fl_standard_method_codec.c
@@ -235,31 +237,10 @@ set(FLUTTER_LINUX_GTK_SHIM_SOURCES
   src/plugin_loader.c
 )
 
-add_library(flutter_linux_gtk_shim_obj OBJECT ${FLUTTER_LINUX_GTK_SHIM_SOURCES})
-set_target_properties(flutter_linux_gtk_shim_obj PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-target_include_directories(flutter_linux_gtk_shim_obj PUBLIC
-  ${CMAKE_SOURCE_DIR}/third_party/flutter_linux_gtk_shim/include
-  ${CMAKE_SOURCE_DIR}/third_party/flutter_embedder_header/include
-  ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_BINARY_DIR}
+set_target_properties(flutter_linux_gtk_shim PROPERTIES
+  POSITION_INDEPENDENT_CODE ON
+  OUTPUT_NAME flutter_linux_gtk
 )
-
-target_compile_options(flutter_linux_gtk_shim_obj PUBLIC
-  $<$<CONFIG:Debug>:-O0 -Wall -Wextra -Wno-sign-compare -Werror -ggdb -U_FORTIFY_SOURCE -DDEBUG>
-  $<$<CONFIG:RelWithDebInfo>:-O3 -Wall -Wextra -Wno-sign-compare -ggdb -DNDEBUG>
-  $<$<CONFIG:Release>:-O3 -Wall -Wextra -Wno-sign-compare -DNDEBUG>
-)
-
-target_link_libraries(flutter_linux_gtk_shim_obj PUBLIC
-  PkgConfig::DRM
-  PkgConfig::GLIB
-  PkgConfig::GOBJECT
-  PkgConfig::GIO
-)
-
-add_library(flutter_linux_gtk_shim SHARED $<TARGET_OBJECTS:flutter_linux_gtk_shim_obj>)
-add_library(flutter_linux_gtk_shim_static STATIC $<TARGET_OBJECTS:flutter_linux_gtk_shim_obj>)
 
 target_link_libraries(flutter_linux_gtk_shim PUBLIC
   PkgConfig::DRM
@@ -268,16 +249,23 @@ target_link_libraries(flutter_linux_gtk_shim PUBLIC
   PkgConfig::GIO
 )
 
-target_link_libraries(flutter_linux_gtk_shim_static PUBLIC
-  PkgConfig::DRM
-  PkgConfig::GLIB
-  PkgConfig::GOBJECT
-  PkgConfig::GIO
+target_include_directories(flutter_linux_gtk_shim PUBLIC
+  ${CMAKE_SOURCE_DIR}/third_party/flutter_linux_gtk_shim/include
+  ${CMAKE_SOURCE_DIR}/third_party/flutter_embedder_header/include
+  ${CMAKE_SOURCE_DIR}/src
+  ${CMAKE_BINARY_DIR}
+)
+
+target_compile_options(flutter_linux_gtk_shim PUBLIC
+  $<$<CONFIG:Debug>:-O0 -Wall -Wextra -Wno-sign-compare -Werror -ggdb -U_FORTIFY_SOURCE -DDEBUG>
+  $<$<CONFIG:RelWithDebInfo>:-O3 -Wall -Wextra -Wno-sign-compare -ggdb -DNDEBUG>
+  $<$<CONFIG:Release>:-O3 -Wall -Wextra -Wno-sign-compare -DNDEBUG>
 )
 
 
 
-target_link_libraries(flutter-pi PUBLIC flutter_linux_gtk_shim_static)
+
+target_link_libraries(flutter-pi PUBLIC flutter_linux_gtk_shim)
 target_link_options(flutter-pi PUBLIC LINKER:--export-dynamic)
 
 # OpenAutoFlutter plugin build (uses GTK-style shim)
@@ -678,6 +666,7 @@ target_link_libraries(
   flutterpi_module
 )
 install(TARGETS flutter-pi RUNTIME DESTINATION bin)
+install(TARGETS flutter_linux_gtk_shim LIBRARY DESTINATION bin)
 
 # Enable lto if supported.
 cmake_policy(SET CMP0069 NEW)
