@@ -8,12 +8,9 @@
 __attribute__((weak)) void fl_register_plugins(FlPluginRegistry *registry);
 
 void flutterpi_register_gtk_plugins(struct flutterpi *flutterpi) {
-    const char *plugin_list_path = flutterpi_get_plugin_list_path(flutterpi);
-    if (plugin_list_path != NULL && *plugin_list_path != '\0') {
-        struct gtk_plugin_loader *loader = gtk_plugin_loader_load(plugin_list_path, flutterpi);
-        if (loader != NULL) {
-            flutterpi_set_gtk_plugin_loader(flutterpi, loader);
-        }
+    struct gtk_plugin_loader *loader = gtk_plugin_loader_load(flutterpi);
+    if (loader != NULL) {
+        flutterpi_set_gtk_plugin_loader(flutterpi, loader);
     }
 
     if (fl_register_plugins == NULL) {

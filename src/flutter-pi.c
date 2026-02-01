@@ -144,7 +144,6 @@ OPTIONS:\n\
                              in pixels.\n\
 \n\
     --drm-fd                   An opened and valid DRM file descriptor\n\
-    --plugin-list <path>       JSON list of GTK plugins to dlopen and register\n\
 \n\
     -h, --help                 Show this help and exit.\n\
 \n\
@@ -268,7 +267,6 @@ struct flutterpi {
     bool session_active;
 
     char *desired_videomode;
-    char *plugin_list_path;
 };
 
 struct device_id_and_fd {
@@ -1031,6 +1029,11 @@ const char *flutterpi_get_asset_bundle_path(struct flutterpi *flutterpi) {
     return flutterpi->flutter.paths->asset_bundle_path;
 }
 
+const char *flutterpi_get_bundle_path(struct flutterpi *flutterpi) {
+    ASSERT_NOT_NULL(flutterpi);
+    return flutterpi->flutter.bundle_path;
+}
+
 /// TODO: Make this refcounted if we're gonna use it from multiple threads.
 struct gbm_device *flutterpi_get_gbm_device(struct flutterpi *flutterpi) {
     return drmdev_get_gbm_device(flutterpi->drmdev);
@@ -1428,10 +1431,8 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
         goto fail_deinitialize_engine;
     }
 
-#ifdef FLUTTERPI_ENABLE_GTK_SHIM
     extern void flutterpi_register_gtk_plugins(struct flutterpi *flutterpi);
     flutterpi_register_gtk_plugins(flutterpi);
-#endif
 
     ok = locales_add_to_fl_engine(flutterpi->locales, engine, procs->UpdateLocales);
     if (ok != 0) {
@@ -1889,7 +1890,6 @@ bool flutterpi_parse_cmdline_args(int argc, char **argv, struct flutterpi_cmdlin
         { "dummy-display", no_argument, &dummy_display_int, 1 },
         { "dummy-display-size", required_argument, NULL, 's' },
         { "drm-fd", required_argument, NULL, 'f' },
-        { "plugin-list", required_argument, NULL, 'l' },
         { 0, 0, 0, 0 },
     };
     memset(result_out, 0, sizeof *result_out);
@@ -1904,12 +1904,11 @@ bool flutterpi_parse_cmdline_args(int argc, char **argv, struct flutterpi_cmdlin
     result_out->engine_argc = 0;
     result_out->engine_argv = NULL;
     result_out->drm_fd = -1;
-    result_out->plugin_list_path = NULL;
 
     finished_parsing_options = false;
     while (!finished_parsing_options) {
         longopt_index = 0;
-        opt = getopt_long(argc, argv, "+i:o:r:d:h:f:l:", long_options, &longopt_index);
+        opt = getopt_long(argc, argv, "+i:o:r:d:h:f:", long_options, &longopt_index);
 
         switch (opt) {
             case 0:
@@ -2024,12 +2023,6 @@ valid_format:
                 result_out->drm_fd = fd;
                 break;
 
-            case 'l':;  // --plugin-list
-                result_out->plugin_list_path = strdup(optarg);
-                if (result_out->plugin_list_path == NULL) {
-                    return false;
-                }
-                break;
 
             case 'h': printf("%s", usage); return false;
 
@@ -2071,11 +2064,6 @@ void flutterpi_set_gtk_plugin_loader(struct flutterpi *flutterpi, struct gtk_plu
 struct gtk_plugin_loader *flutterpi_get_gtk_plugin_loader(struct flutterpi *flutterpi) {
     ASSERT_NOT_NULL(flutterpi);
     return flutterpi->gtk_plugin_loader;
-}
-
-const char *flutterpi_get_plugin_list_path(struct flutterpi *flutterpi) {
-    ASSERT_NOT_NULL(flutterpi);
-    return flutterpi->plugin_list_path;
 }
 
 static int on_drmdev_open(const char *path, int flags, void **fd_metadata_out, void *userdata) {
@@ -2368,7 +2356,7 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
     struct tracer *tracer;
     struct window *window;
     void *engine_handle;
-    char *bundle_path, **engine_argv, *desired_videomode, *plugin_list_path;
+    char *bundle_path, **engine_argv, *desired_videomode;
     int ok, engine_argc, wakeup_fd;
 
     fpi = malloc(sizeof *fpi);
@@ -2409,7 +2397,6 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
 #endif
 
     desired_videomode = cmd_args.desired_videomode;
-    plugin_list_path = cmd_args.plugin_list_path;
 
     if (bundle_path == NULL) {
         LOG_ERROR("ERROR: Bundle path does not exist.\n");
@@ -2774,7 +2761,6 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
     fpi->gtk_plugin_loader = NULL;
     fpi->texture_registry = texture_registry;
     fpi->libseat = libseat;
-    fpi->plugin_list_path = plugin_list_path;
     return fpi;
 
 fail_destroy_texture_registry:
@@ -2843,7 +2829,6 @@ fail_free_paths:
 
 fail_free_cmd_args:
     free(cmd_args.bundle_path);
-    free(cmd_args.plugin_list_path);
 
 fail_free_fpi:
     free(fpi);
@@ -2890,7 +2875,6 @@ void flutterpi_destroy(struct flutterpi *flutterpi) {
     close(flutterpi->wakeup_event_loop_fd);
     flutter_paths_free(flutterpi->flutter.paths);
     free(flutterpi->flutter.bundle_path);
-    free(flutterpi->plugin_list_path);
     free(flutterpi);
     return;
 }

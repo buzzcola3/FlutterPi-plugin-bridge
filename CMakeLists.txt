@@ -238,6 +238,7 @@ add_library(
 )
 
 target_link_libraries(flutter_linux_gtk_shim PUBLIC
+  PkgConfig::DRM
   PkgConfig::GLIB
   PkgConfig::GOBJECT
   PkgConfig::GIO
@@ -258,7 +259,6 @@ target_compile_options(flutter_linux_gtk_shim PUBLIC
 
 target_link_libraries(flutter-pi PUBLIC flutter_linux_gtk_shim)
 target_link_options(flutter-pi PUBLIC LINKER:--export-dynamic)
-target_compile_definitions(flutterpi_module PUBLIC FLUTTERPI_ENABLE_GTK_SHIM)
 
 # OpenAutoFlutter plugin build (uses GTK-style shim)
 if (BUILD_OPENAUTOFLUTTER_PLUGIN)

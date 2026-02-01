@@ -35,6 +35,4 @@ struct texture *flutterpi_create_texture(struct flutterpi *flutterpi);
 void flutterpi_set_gtk_plugin_loader(struct flutterpi *flutterpi, struct gtk_plugin_loader *loader);
 struct gtk_plugin_loader *flutterpi_get_gtk_plugin_loader(struct flutterpi *flutterpi);
 
-const char *flutterpi_get_plugin_list_path(struct flutterpi *flutterpi);
-
 #endif  // FLUTTERPI_SHIM_H

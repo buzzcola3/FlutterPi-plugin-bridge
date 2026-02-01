@@ -145,8 +145,6 @@ struct flutterpi_cmdline_args {
 
     bool has_drm_fd;
     int drm_fd;
-
-    char *plugin_list_path;
 };
 
 int flutterpi_fill_view_properties(bool has_orientation, enum device_orientation orientation, bool has_rotation, int rotation);
@@ -176,8 +174,6 @@ bool flutterpi_parse_cmdline_args(int argc, char **argv, struct flutterpi_cmdlin
 void flutterpi_set_gtk_plugin_loader(struct flutterpi *flutterpi, struct gtk_plugin_loader *loader);
 struct gtk_plugin_loader *flutterpi_get_gtk_plugin_loader(struct flutterpi *flutterpi);
 
-const char *flutterpi_get_plugin_list_path(struct flutterpi *flutterpi);
-
 struct texture_registry *flutterpi_get_texture_registry(struct flutterpi *flutterpi);
 
 struct plugin_registry *flutterpi_get_plugin_registry(struct flutterpi *flutterpi);
@@ -190,6 +186,8 @@ void flutterpi_release_platform_message_response_handle(struct flutterpi *flutte
 struct texture *flutterpi_create_texture(struct flutterpi *flutterpi);
 
 const char *flutterpi_get_asset_bundle_path(struct flutterpi *flutterpi);
+
+const char *flutterpi_get_bundle_path(struct flutterpi *flutterpi);
 
 void flutterpi_schedule_exit(struct flutterpi *flutterpi);
 

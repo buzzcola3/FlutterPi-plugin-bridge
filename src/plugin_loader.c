@@ -1,364 +1,265 @@
 // SPDX-License-Identifier: MIT
 #include "plugin_loader.h"
 
-#include <ctype.h>
+#include <dirent.h>
 #include <dlfcn.h>
-#include <errno.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
+#include "flutter-pi.h"
 #include "util/logging.h"
 
 #include <flutter_linux/flutter_linux.h>
 
 #include "flutter_linux_gtk_shim/fl_plugin_registrar_internal.h"
 
-struct plugin_entry {
-    char *path;
-    char *symbol;
-};
-
 struct gtk_plugin_loader {
     void **handles;
     size_t handle_count;
+    size_t handle_capacity;
 };
 
-static const char *skip_ws(const char *p) {
-    while (p && *p && isspace((unsigned char) *p)) {
-        p++;
-    }
-    return p;
-}
+static bool has_so_suffix(const char *name) {
+    size_t len;
 
-static bool parse_json_string(const char **p_inout, char **out_str) {
-    const char *p = skip_ws(*p_inout);
-    if (*p != '"') {
-        return false;
-    }
-    p++;
-
-    char *buf = malloc(strlen(p) + 1);
-    if (buf == NULL) {
+    if (name == NULL) {
         return false;
     }
 
-    size_t out_len = 0;
-    bool escape = false;
-    for (; *p; p++) {
-        if (escape) {
-            switch (*p) {
-                case '"': buf[out_len++] = '"'; break;
-                case '\\': buf[out_len++] = '\\'; break;
-                case '/': buf[out_len++] = '/'; break;
-                case 'b': buf[out_len++] = '\b'; break;
-                case 'f': buf[out_len++] = '\f'; break;
-                case 'n': buf[out_len++] = '\n'; break;
-                case 'r': buf[out_len++] = '\r'; break;
-                case 't': buf[out_len++] = '\t'; break;
-                default:
-                    free(buf);
-                    return false;
-            }
-            escape = false;
-            continue;
-        }
-
-        if (*p == '\\') {
-            escape = true;
-            continue;
-        }
-
-        if (*p == '"') {
-            buf[out_len] = '\0';
-            *out_str = buf;
-            *p_inout = p + 1;
-            return true;
-        }
-
-        buf[out_len++] = *p;
-    }
-
-    free(buf);
-    return false;
+    len = strlen(name);
+    return len > 3 && strcmp(name + len - 3, ".so") == 0;
 }
 
-static const char *find_object_end(const char *p) {
-    bool in_string = false;
-    bool escape = false;
-    int depth = 0;
+static bool is_regular_file(const char *path) {
+    struct stat st;
 
-    for (; *p; p++) {
-        if (escape) {
-            escape = false;
-            continue;
-        }
-        if (*p == '\\') {
-            escape = true;
-            continue;
-        }
-        if (*p == '"') {
-            in_string = !in_string;
-            continue;
-        }
-        if (in_string) {
-            continue;
-        }
-        if (*p == '{') {
-            depth++;
-        } else if (*p == '}') {
-            depth--;
-            if (depth == 0) {
-                return p;
-            }
-        }
+    if (path == NULL) {
+        return false;
     }
 
-    return NULL;
-}
-
-static bool extract_key_string(const char *obj_start, const char *obj_end, const char *key, char **out_value) {
-    size_t key_len = strlen(key);
-    const char *p = obj_start;
-
-    while (p < obj_end) {
-        const char *key_pos = strstr(p, key);
-        if (key_pos == NULL || key_pos >= obj_end) {
-            return false;
-        }
-
-        if (key_pos > obj_start && key_pos[-1] == '"' && key_pos[key_len] == '"') {
-            const char *after_key = key_pos + key_len + 1;
-            after_key = skip_ws(after_key);
-            if (*after_key != ':') {
-                p = key_pos + 1;
-                continue;
-            }
-            after_key = skip_ws(after_key + 1);
-            if (!parse_json_string(&after_key, out_value)) {
-                return false;
-            }
-            return true;
-        }
-
-        p = key_pos + 1;
+    if (stat(path, &st) != 0) {
+        return false;
     }
 
-    return false;
+    return S_ISREG(st.st_mode);
 }
 
-static char *resolve_plugin_path(const char *list_path, const char *entry_path) {
-    if (entry_path == NULL) {
+static char *join_path(const char *dir, const char *name) {
+    size_t dir_len;
+    size_t name_len;
+    char *joined;
+
+    if (dir == NULL || name == NULL) {
         return NULL;
     }
-    if (entry_path[0] == '/') {
-        return strdup(entry_path);
-    }
 
-    const char *last_slash = strrchr(list_path, '/');
-    if (last_slash == NULL) {
-        return strdup(entry_path);
-    }
-
-    size_t dir_len = (size_t)(last_slash - list_path);
-    size_t entry_len = strlen(entry_path);
-    char *joined = malloc(dir_len + 1 + entry_len + 1);
+    dir_len = strlen(dir);
+    name_len = strlen(name);
+    joined = malloc(dir_len + 1 + name_len + 1);
     if (joined == NULL) {
         return NULL;
     }
 
-    memcpy(joined, list_path, dir_len);
+    memcpy(joined, dir, dir_len);
     joined[dir_len] = '/';
-    memcpy(joined + dir_len + 1, entry_path, entry_len);
-    joined[dir_len + 1 + entry_len] = '\0';
+    memcpy(joined + dir_len + 1, name, name_len);
+    joined[dir_len + 1 + name_len] = '\0';
     return joined;
 }
 
-static bool parse_plugin_list_json(const char *list_path, const char *json, struct plugin_entry **entries_out, size_t *count_out) {
-    const char *p = json;
-    size_t capacity = 4;
-    size_t count = 0;
-    struct plugin_entry *entries = calloc(capacity, sizeof(*entries));
-    if (entries == NULL) {
+static char *build_symbol_name(const char *filename) {
+    size_t len;
+    size_t base_len;
+    const char *base_start;
+    char *base;
+    char *symbol;
+
+    if (!has_so_suffix(filename)) {
+        return NULL;
+    }
+
+    len = strlen(filename);
+    base_len = len - 3;
+    base = malloc(base_len + 1);
+    if (base == NULL) {
+        return NULL;
+    }
+
+    memcpy(base, filename, base_len);
+    base[base_len] = '\0';
+
+    base_start = base;
+    if (strncmp(base, "lib", 3) == 0) {
+        base_start = base + 3;
+    }
+
+    symbol = malloc(strlen(base_start) + strlen("_register_with_registrar") + 1);
+    if (symbol == NULL) {
+        free(base);
+        return NULL;
+    }
+
+    strcpy(symbol, base_start);
+    strcat(symbol, "_register_with_registrar");
+    free(base);
+    return symbol;
+}
+
+static char *get_plugins_dir(struct flutterpi *flutterpi) {
+    const char *bundle_path;
+
+    if (flutterpi == NULL) {
+        return NULL;
+    }
+
+    bundle_path = flutterpi_get_bundle_path(flutterpi);
+    if (bundle_path == NULL) {
+        return NULL;
+    }
+
+    return join_path(bundle_path, "plugins");
+}
+
+static bool ensure_handle_capacity(struct gtk_plugin_loader *loader) {
+    size_t new_capacity;
+    void **new_handles;
+
+    if (loader->handle_count < loader->handle_capacity) {
+        return true;
+    }
+
+    new_capacity = loader->handle_capacity == 0 ? 4 : loader->handle_capacity * 2;
+    new_handles = realloc(loader->handles, new_capacity * sizeof(void *));
+    if (new_handles == NULL) {
         return false;
     }
 
-    while (*p) {
-        p = strchr(p, '{');
-        if (p == NULL) {
-            break;
-        }
-        const char *obj_end = find_object_end(p);
-        if (obj_end == NULL) {
-            break;
-        }
-
-        char *path = NULL;
-        char *symbol = NULL;
-        bool has_path = extract_key_string(p, obj_end, "path", &path);
-        bool has_symbol = extract_key_string(p, obj_end, "symbol", &symbol);
-
-        if (has_path) {
-            char *resolved = resolve_plugin_path(list_path, path);
-            free(path);
-            path = resolved;
-        }
-
-        if (!has_path || path == NULL) {
-            LOG_ERROR("Plugin list entry missing 'path'.\n");
-            free(path);
-            free(symbol);
-            p = obj_end + 1;
-            continue;
-        }
-
-        if (!has_symbol || symbol == NULL) {
-            LOG_ERROR("Plugin list entry missing 'symbol' for %s.\n", path);
-            free(path);
-            free(symbol);
-            p = obj_end + 1;
-            continue;
-        }
-
-        if (count == capacity) {
-            capacity *= 2;
-            struct plugin_entry *new_entries = realloc(entries, capacity * sizeof(*entries));
-            if (new_entries == NULL) {
-                free(path);
-                free(symbol);
-                break;
-            }
-            entries = new_entries;
-        }
-
-        entries[count++] = (struct plugin_entry){ .path = path, .symbol = symbol };
-        p = obj_end + 1;
-    }
-
-    if (count == 0) {
-        free(entries);
-        return false;
-    }
-
-    *entries_out = entries;
-    *count_out = count;
+    loader->handles = new_handles;
+    loader->handle_capacity = new_capacity;
     return true;
 }
 
-static char *read_file_to_string(const char *path) {
-    FILE *file = fopen(path, "rb");
-    if (file == NULL) {
-        LOG_ERROR("Could not open plugin list file '%s': %s\n", path, strerror(errno));
+struct gtk_plugin_loader *gtk_plugin_loader_load(struct flutterpi *flutterpi) {
+    struct gtk_plugin_loader *loader;
+    struct dirent *entry;
+    size_t found_count = 0;
+    DIR *dir;
+    char *plugins_dir;
+
+    if (flutterpi == NULL) {
         return NULL;
     }
 
-    if (fseek(file, 0, SEEK_END) != 0) {
-        fclose(file);
+    plugins_dir = get_plugins_dir(flutterpi);
+    if (plugins_dir == NULL) {
         return NULL;
     }
 
-    long len = ftell(file);
-    if (len < 0) {
-        fclose(file);
+    dir = opendir(plugins_dir);
+    if (dir == NULL) {
+        LOG_DEBUG("No plugins found in %s.\n", plugins_dir);
+        free(plugins_dir);
         return NULL;
     }
 
-    rewind(file);
-    char *buf = malloc((size_t) len + 1);
-    if (buf == NULL) {
-        fclose(file);
-        return NULL;
-    }
-
-    size_t read = fread(buf, 1, (size_t) len, file);
-    fclose(file);
-    buf[read] = '\0';
-    return buf;
-}
-
-struct gtk_plugin_loader *gtk_plugin_loader_load(const char *plugin_list_path, struct flutterpi *flutterpi) {
-    if (plugin_list_path == NULL || *plugin_list_path == '\0') {
-        return NULL;
-    }
-
-    char *json = read_file_to_string(plugin_list_path);
-    if (json == NULL) {
-        return NULL;
-    }
-
-    struct plugin_entry *entries = NULL;
-    size_t entry_count = 0;
-    if (!parse_plugin_list_json(plugin_list_path, json, &entries, &entry_count)) {
-        LOG_ERROR("No valid plugins found in %s.\n", plugin_list_path);
-        free(json);
-        return NULL;
-    }
-
-    struct gtk_plugin_loader *loader = calloc(1, sizeof(*loader));
+    loader = calloc(1, sizeof(*loader));
     if (loader == NULL) {
-        free(json);
-        for (size_t i = 0; i < entry_count; i++) {
-            free(entries[i].path);
-            free(entries[i].symbol);
-        }
-        free(entries);
+        closedir(dir);
+        free(plugins_dir);
         return NULL;
     }
 
-    loader->handles = calloc(entry_count, sizeof(void *));
-    if (loader->handles == NULL) {
-        free(loader);
-        free(json);
-        for (size_t i = 0; i < entry_count; i++) {
-            free(entries[i].path);
-            free(entries[i].symbol);
-        }
-        free(entries);
-        return NULL;
-    }
+    while ((entry = readdir(dir)) != NULL) {
+        char *path;
+        char *symbol;
+        void *handle;
 
-    for (size_t i = 0; i < entry_count; i++) {
-        void *handle = dlopen(entries[i].path, RTLD_NOW | RTLD_LOCAL);
+        if (entry->d_name[0] == '.') {
+            continue;
+        }
+
+        if (!has_so_suffix(entry->d_name)) {
+            continue;
+        }
+
+        path = join_path(plugins_dir, entry->d_name);
+        if (path == NULL) {
+            continue;
+        }
+
+        if (!is_regular_file(path)) {
+            free(path);
+            continue;
+        }
+
+        found_count++;
+
+        symbol = build_symbol_name(entry->d_name);
+        if (symbol == NULL) {
+            free(path);
+            continue;
+        }
+
+        handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
         if (handle == NULL) {
-            LOG_ERROR("Failed to load plugin %s: %s\n", entries[i].path, dlerror());
+            LOG_ERROR("Failed to load plugin %s: %s\n", path, dlerror());
+            free(symbol);
+            free(path);
             continue;
         }
 
         typedef void (*register_func_t)(FlPluginRegistrar *registrar);
-        register_func_t register_func = (register_func_t) dlsym(handle, entries[i].symbol);
+        register_func_t register_func = (register_func_t) dlsym(handle, symbol);
         if (register_func == NULL) {
-            LOG_ERROR("Failed to find symbol %s in %s: %s\n", entries[i].symbol, entries[i].path, dlerror());
+            LOG_ERROR("Failed to find symbol %s in %s: %s\n", symbol, path, dlerror());
             dlclose(handle);
+            free(symbol);
+            free(path);
             continue;
         }
 
         FlPluginRegistrar *registrar = fl_plugin_registrar_new_for_flutterpi(flutterpi);
         if (registrar == NULL) {
-            LOG_ERROR("Failed to create GTK registrar for %s.\n", entries[i].path);
+            LOG_ERROR("Failed to create GTK registrar for %s.\n", path);
             dlclose(handle);
+            free(symbol);
+            free(path);
             continue;
         }
 
         register_func(registrar);
         g_object_unref(registrar);
 
+        if (!ensure_handle_capacity(loader)) {
+            LOG_ERROR("Failed to grow plugin handle list for %s.\n", path);
+            dlclose(handle);
+            free(symbol);
+            free(path);
+            continue;
+        }
+
         loader->handles[loader->handle_count++] = handle;
+        free(symbol);
+        free(path);
     }
 
-    for (size_t i = 0; i < entry_count; i++) {
-        free(entries[i].path);
-        free(entries[i].symbol);
+    closedir(dir);
+
+    if (found_count == 0) {
+        LOG_DEBUG("No plugins found in %s.\n", plugins_dir);
+    } else {
+        LOG_DEBUG("Found %zu plugins in %s.\n", found_count, plugins_dir);
     }
-    free(entries);
-    free(json);
+
+    free(plugins_dir);
 
     if (loader->handle_count == 0) {
         gtk_plugin_loader_destroy(loader);
         return NULL;
     }
 
-    LOG_DEBUG("Loaded %zu GTK plugins from %s.\n", loader->handle_count, plugin_list_path);
     return loader;
 }
 

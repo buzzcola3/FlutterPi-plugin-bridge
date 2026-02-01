@@ -9,7 +9,7 @@ extern "C" {
 struct flutterpi;
 struct gtk_plugin_loader;
 
-struct gtk_plugin_loader *gtk_plugin_loader_load(const char *plugin_list_path, struct flutterpi *flutterpi);
+struct gtk_plugin_loader *gtk_plugin_loader_load(struct flutterpi *flutterpi);
 void gtk_plugin_loader_destroy(struct gtk_plugin_loader *loader);
 
 #ifdef __cplusplus
