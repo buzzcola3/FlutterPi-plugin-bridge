@@ -237,6 +237,8 @@ add_library(
   src/plugin_loader.c
 )
 
+set_target_properties(flutter_linux_gtk_shim PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 target_link_libraries(flutter_linux_gtk_shim PUBLIC
   PkgConfig::DRM
   PkgConfig::GLIB
