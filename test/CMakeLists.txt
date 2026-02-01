@@ -5,6 +5,7 @@ add_executable(platformchannel_test
 target_link_libraries(
     platformchannel_test
     flutterpi_module
+    flutter_linux_gtk_shim
     Unity
 )
 
@@ -17,6 +18,7 @@ add_executable(flutterpi_test
 target_link_libraries(
     flutterpi_test
     flutterpi_module
+    flutter_linux_gtk_shim
     Unity
 )
 
