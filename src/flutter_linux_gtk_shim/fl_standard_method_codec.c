@@ -6,6 +6,22 @@
 
 #include "platformchannel.h"
 
+#if !GLIB_CHECK_VERSION(2, 68, 0)
+static gpointer g_memdup2(gconstpointer mem, gsize byte_size) {
+    if (mem == NULL || byte_size == 0) {
+        return NULL;
+    }
+
+    gpointer copy = g_malloc(byte_size);
+    if (copy == NULL) {
+        return NULL;
+    }
+
+    memcpy(copy, mem, byte_size);
+    return copy;
+}
+#endif
+
 struct _FlStandardMethodCodec {
     FlMethodCodec parent_instance;
 };
