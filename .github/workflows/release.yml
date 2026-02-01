@@ -64,9 +64,14 @@ jobs:
           ARCH: ${{ matrix.debian-arch }}
         run: |
           if [ -f /etc/os-release ] && grep -qi '^ID=ubuntu' /etc/os-release; then
-            sed -i 's|http://security.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list
+            if [ -f /etc/apt/sources.list ]; then
+              sed -i 's|http://security.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list
+            fi
+            if [ -f /etc/apt/sources.list.d/ubuntu.sources ]; then
+              sed -i 's|http://security.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources
+            fi
           fi
-          apt-get -o Acquire::Retries=3 update && apt-get install -y --fix-missing \
+          apt-get -o Acquire::Retries=5 update && apt-get install -y --fix-missing \
             git cmake ninja-build clang lld xz-utils pkg-config \
             libdrm-dev:$ARCH libgbm-dev:$ARCH libsystemd-dev:$ARCH libinput-dev:$ARCH libudev-dev:$ARCH libxkbcommon-dev:$ARCH \
             libgstreamer-plugins-base1.0-dev:$ARCH \
