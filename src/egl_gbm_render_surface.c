@@ -533,11 +533,7 @@ static int egl_gbm_render_surface_present_kms(struct surface *s, const struct fl
             .src_w = DOUBLE_TO_FP1616_ROUNDED(egl_surface->render_surface.size.x),
             .src_h = DOUBLE_TO_FP1616_ROUNDED(egl_surface->render_surface.size.y),
 
-            // If a rotated framebuffer console is shown, the rotation of the primary plane might be non-zero.
-            //
-            // Even though it'd be nice to keep using the already set rotation, other planes might not be rotated,
-            // so just use zero rotation for all planes.
-            .has_rotation = true,
+            .has_rotation = false,
             .rotation = PLANE_TRANSFORM_ROTATE_0,
 
             .has_in_fence_fd = false,

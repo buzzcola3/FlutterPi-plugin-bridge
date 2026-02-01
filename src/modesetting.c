@@ -25,6 +25,8 @@
 #include "util/macros.h"
 #include "util/refcounting.h"
 
+
+
 struct drm_fb {
     struct list_head entry;
 
@@ -822,6 +824,8 @@ static int fetch_plane(int drm_fd, uint32_t plane_id, struct drm_plane *plane_ou
         }
     }
 
+
+
     bool has_format = false;
     enum pixfmt format = PIXFMT_RGB565;
 
@@ -1499,15 +1503,36 @@ uint32_t drmdev_add_fb_multiplanar_locked(
     fb->id = 0;
     fb->width = width;
     fb->height = height;
+    if (has_modifiers && getenv("FLUTTERPI_DISABLE_MODIFIERS") != NULL) {
+        has_modifiers = false;
+    }
+
     fb->format = pixel_format;
     fb->has_modifier = has_modifiers;
-    fb->modifier = modifiers[0];
+    fb->modifier = has_modifiers ? modifiers[0] : DRM_FORMAT_MOD_INVALID;
     fb->flags = 0;
     memcpy(fb->handles, bo_handles, sizeof(fb->handles));
     memcpy(fb->pitches, pitches, sizeof(fb->pitches));
     memcpy(fb->offsets, offsets, sizeof(fb->offsets));
 
     fb_id = 0;
+    LOG_DEBUG(
+        "DRM add FB: %ux%u fmt=%s drm=0x%08x has_modifiers=%s modifier=0x%016" PRIx64 " pitches=[%u,%u,%u,%u] offsets=[%u,%u,%u,%u]\n",
+        width,
+        height,
+        get_pixfmt_info(pixel_format)->short_name,
+        get_pixfmt_info(pixel_format)->drm_format,
+        has_modifiers ? "true" : "false",
+        modifiers[0],
+        pitches[0],
+        pitches[1],
+        pitches[2],
+        pitches[3],
+        offsets[0],
+        offsets[1],
+        offsets[2],
+        offsets[3]
+    );
     if (has_modifiers) {
         ok = drmModeAddFB2WithModifiers(
             drmdev->fd,
@@ -1532,6 +1557,8 @@ uint32_t drmdev_add_fb_multiplanar_locked(
             goto fail_free_fb;
         }
     }
+
+    LOG_DEBUG("DRM add FB ok: fb_id=%u\n", fb_id);
 
     fb->id = fb_id;
     list_add(&fb->entry, &drmdev->fbs);

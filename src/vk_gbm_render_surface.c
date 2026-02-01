@@ -612,6 +612,10 @@ static int vk_gbm_render_surface_present_kms(struct surface *s, const struct fl_
         drmdev = kms_req_builder_get_drmdev(builder);
         ASSERT_NOT_NULL(drmdev);
 
+        bool modifiers_disabled = getenv("FLUTTERPI_DISABLE_MODIFIERS") != NULL;
+        uint64_t bo_modifier = gbm_bo_get_modifier(bo);
+        bool has_modifier = !modifiers_disabled && bo_modifier != DRM_FORMAT_MOD_INVALID;
+
         TRACER_BEGIN(vk_surface->surface.tracer, "drmdev_add_fb (non-opaque)");
         fb_id = drmdev_add_fb(
             drmdev,
@@ -621,8 +625,8 @@ static int vk_gbm_render_surface_present_kms(struct surface *s, const struct fl_
             gbm_bo_get_handle(bo).u32,
             gbm_bo_get_stride(bo),
             gbm_bo_get_offset(bo, 0),
-            true,
-            gbm_bo_get_modifier(bo)
+            has_modifier,
+            has_modifier ? bo_modifier : DRM_FORMAT_MOD_INVALID
         );
         TRACER_END(vk_surface->surface.tracer, "drmdev_add_fb (non-opaque)");
 
@@ -674,8 +678,8 @@ static int vk_gbm_render_surface_present_kms(struct surface *s, const struct fl_
         &(const struct kms_fb_layer){
             .drm_fb_id = fb_id,
             .format = pixel_format,
-            .has_modifier = true,
-            .modifier = gbm_bo_get_modifier(bo),
+            .has_modifier = has_modifier,
+            .modifier = has_modifier ? bo_modifier : DRM_FORMAT_MOD_INVALID,
 
             .dst_x = (int32_t) props->aa_rect.offset.x,
             .dst_y = (int32_t) props->aa_rect.offset.y,
@@ -687,8 +691,7 @@ static int vk_gbm_render_surface_present_kms(struct surface *s, const struct fl_
             .src_w = DOUBLE_TO_FP1616_ROUNDED(vk_surface->render_surface.size.x),
             .src_h = DOUBLE_TO_FP1616_ROUNDED(vk_surface->render_surface.size.y),
 
-            // see egl_gbm_render_surface_present_kms
-            .has_rotation = true,
+            .has_rotation = false,
             .rotation = PLANE_TRANSFORM_ROTATE_0,
 
             .has_in_fence_fd = false,
