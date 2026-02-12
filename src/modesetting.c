@@ -1110,8 +1110,6 @@ struct drmdev *drmdev_new_from_interface_fd(int fd, void *fd_metadata, const str
     // Log who else might be using the DRM device
     LOG_KMS_DEBUG("Checking /proc for other DRM users...\n");
     {
-        char link_path[256];
-        char target[256];
         struct stat drm_stat;
         if (fstat(fd, &drm_stat) == 0) {
             LOG_KMS_DEBUG("  DRM device: major=%u, minor=%u\n",
