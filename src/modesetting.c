@@ -2182,7 +2182,7 @@ drmModeModeInfo *__next_mode(const struct drm_connector *connector, const drmMod
 #ifdef DEBUG_DRM_PLANE_ALLOCATIONS
     #define LOG_DRM_PLANE_ALLOCATION_DEBUG LOG_DEBUG
 #else
-    #define LOG_DRM_PLANE_ALLOCATION_DEBUG(...)
+    #define LOG_DRM_PLANE_ALLOCATION_DEBUG LOG_KMS_DEBUG
 #endif
 
 static bool plane_qualifies(
@@ -2663,6 +2663,17 @@ int kms_req_builder_push_fb_layer(
 
     if (plane == NULL) {
         LOG_DEBUG("Could not find a suitable unused DRM plane for pushing the framebuffer.\n");
+        LOG_KMS_DEBUG("kms_req_builder_push_fb_layer: no plane found for layer %d.\n", index);
+        LOG_KMS_DEBUG("  requested: format=%s, has_modifier=%s, modifier=0x%" PRIx64 ", has_rotation=%s, fb_id=%" PRIu32 "\n",
+            get_pixfmt_info(layer->format)->name,
+            layer->has_modifier ? "yes" : "no",
+            layer->modifier,
+            layer->has_rotation ? "yes" : "no",
+            layer->drm_fb_id);
+        LOG_KMS_DEBUG("  builder state: n_available_planes=%d, use_legacy=%s, supports_atomic=%s\n",
+            (int) builder->drmdev->n_planes,
+            builder->use_legacy ? "yes" : "no",
+            builder->supports_atomic ? "yes" : "no");
         return EIO;
     }
 
