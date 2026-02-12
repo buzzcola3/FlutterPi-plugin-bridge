@@ -2290,9 +2290,12 @@ static bool plane_qualifies(
     }
     if (has_rotation) {
         if (!plane->has_rotation) {
-            // return false if the plane doesn't support rotation
-            LOG_DRM_PLANE_ALLOCATION_DEBUG("    does not qualify: explicit rotation requested but plane has no rotation property.\n");
-            return false;
+            // If the plane doesn't expose a rotation property, ROTATE_0 is implicitly
+            // the default. Only reject if a non-identity rotation was requested.
+            if (rotation.u32 != PLANE_TRANSFORM_ROTATE_0.u32) {
+                LOG_DRM_PLANE_ALLOCATION_DEBUG("    does not qualify: explicit rotation requested but plane has no rotation property.\n");
+                return false;
+            }
         } else if (plane->has_hardcoded_rotation && plane->hardcoded_rotation.u32 != rotation.u32) {
             // return false if the plane has a hardcoded rotation and the rotation we want
             // is not the hardcoded one
