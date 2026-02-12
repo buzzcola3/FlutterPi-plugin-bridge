@@ -10,6 +10,9 @@
 
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/sysmacros.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <sys/epoll.h>
@@ -24,6 +27,9 @@
 #include "util/logging.h"
 #include "util/macros.h"
 #include "util/refcounting.h"
+
+/// Global flag for verbose KMS/DRM debug logging.
+bool kms_debug_enabled = false;
 
 struct drm_fb {
     struct list_head entry;
@@ -185,11 +191,31 @@ static int fetch_connector(int drm_fd, uint32_t connector_id, struct drm_connect
 
     drm_connector_prop_ids_init(&ids);
 
+    LOG_KMS_DEBUG("Fetching connector id=%u...\n", connector_id);
+
     connector = drmModeGetConnector(drm_fd, connector_id);
     if (connector == NULL) {
         ok = errno;
         LOG_ERROR("Could not get DRM device connector. drmModeGetConnector");
         return ok;
+    }
+
+    LOG_KMS_DEBUG("  Connector %u: type=%u, type_id=%u, connection=%s, modes=%d, encoders=%d\n",
+        connector->connector_id,
+        connector->connector_type,
+        connector->connector_type_id,
+        connector->connection == DRM_MODE_CONNECTED ? "connected" :
+        connector->connection == DRM_MODE_DISCONNECTED ? "disconnected" : "unknown",
+        connector->count_modes,
+        connector->count_encoders);
+    LOG_KMS_DEBUG("  Physical size: %umm x %umm\n", connector->mmWidth, connector->mmHeight);
+
+    for (int m = 0; m < connector->count_modes; m++) {
+        LOG_KMS_DEBUG("    Mode[%d]: \"%s\" %ux%u@%uHz (type=0x%x, flags=0x%x)\n",
+            m, connector->modes[m].name,
+            connector->modes[m].hdisplay, connector->modes[m].vdisplay,
+            connector->modes[m].vrefresh,
+            connector->modes[m].type, connector->modes[m].flags);
     }
 
     props = drmModeObjectGetProperties(drm_fd, connector_id, DRM_MODE_OBJECT_CONNECTOR);
@@ -198,6 +224,7 @@ static int fetch_connector(int drm_fd, uint32_t connector_id, struct drm_connect
         perror("[modesetting] Could not get DRM device connectors properties. drmModeObjectGetProperties");
         goto fail_free_connector;
     }
+    LOG_KMS_DEBUG("  Connector properties count: %u\n", props->count_props);
 
     crtc_id = DRM_ID_NONE;
     for (int i = 0; i < props->count_props; i++) {
@@ -380,11 +407,23 @@ static int fetch_crtc(int drm_fd, int crtc_index, uint32_t crtc_id, struct drm_c
 
     drm_crtc_prop_ids_init(&ids);
 
+    LOG_KMS_DEBUG("Fetching CRTC id=%u (index=%d)...\n", crtc_id, crtc_index);
+
     crtc = drmModeGetCrtc(drm_fd, crtc_id);
     if (crtc == NULL) {
         ok = errno;
         perror("[modesetting] Could not get DRM device CRTC. drmModeGetCrtc");
         return ok;
+    }
+
+    LOG_KMS_DEBUG("  CRTC %u: buffer_id=%u, x=%u, y=%u, size=%ux%u, mode_valid=%d\n",
+        crtc->crtc_id, crtc->buffer_id,
+        crtc->x, crtc->y,
+        crtc->width, crtc->height,
+        crtc->mode_valid);
+    if (crtc->mode_valid) {
+        LOG_KMS_DEBUG("  CRTC current mode: \"%s\" %ux%u@%uHz\n",
+            crtc->mode.name, crtc->mode.hdisplay, crtc->mode.vdisplay, crtc->mode.vrefresh);
     }
 
     props = drmModeObjectGetProperties(drm_fd, crtc_id, DRM_MODE_OBJECT_CRTC);
@@ -393,6 +432,7 @@ static int fetch_crtc(int drm_fd, int crtc_index, uint32_t crtc_id, struct drm_c
         perror("[modesetting] Could not get DRM device CRTCs properties. drmModeObjectGetProperties");
         goto fail_free_crtc;
     }
+    LOG_KMS_DEBUG("  CRTC properties count: %u\n", props->count_props);
 
     for (int i = 0; i < props->count_props; i++) {
         prop_info = drmModeGetProperty(drm_fd, props->props[i]);
@@ -627,11 +667,20 @@ static int fetch_plane(int drm_fd, uint32_t plane_id, struct drm_plane *plane_ou
 
     drm_plane_prop_ids_init(&ids);
 
+    LOG_KMS_DEBUG("Fetching plane id=%u...\n", plane_id);
+
     plane = drmModeGetPlane(drm_fd, plane_id);
     if (plane == NULL) {
         ok = errno;
         perror("[modesetting] Could not get DRM device plane. drmModeGetPlane");
         return ok;
+    }
+
+    LOG_KMS_DEBUG("  Plane %u: crtc_id=%u, fb_id=%u, possible_crtcs=0x%x, formats=%u\n",
+        plane->plane_id, plane->crtc_id, plane->fb_id,
+        plane->possible_crtcs, plane->count_formats);
+    for (uint32_t fi = 0; fi < plane->count_formats; fi++) {
+        LOG_KMS_DEBUG("    Format[%u]: 0x%08x (%.4s)\n", fi, plane->formats[fi], (const char*)&plane->formats[fi]);
     }
 
     props = drmModeObjectGetProperties(drm_fd, plane_id, DRM_MODE_OBJECT_PLANE);
@@ -640,6 +689,7 @@ static int fetch_plane(int drm_fd, uint32_t plane_id, struct drm_plane *plane_ou
         perror("[modesetting] Could not get DRM device planes' properties. drmModeObjectGetProperties");
         goto fail_free_plane;
     }
+    LOG_KMS_DEBUG("  Plane properties count: %u\n", props->count_props);
 
     // zero-initialize plane_out.
     memset(plane_out, 0, sizeof(*plane_out));
@@ -999,18 +1049,23 @@ static void assert_rotations_work() {
 static int set_drm_client_caps(int fd, bool *supports_atomic_modesetting) {
     int ok;
 
+    LOG_KMS_DEBUG("Setting DRM client caps on fd %d...\n", fd);
+
     ok = drmSetClientCap(fd, DRM_CLIENT_CAP_UNIVERSAL_PLANES, 1);
     if (ok < 0) {
         ok = errno;
         LOG_ERROR("Could not set DRM client universal planes capable. drmSetClientCap: %s\n", strerror(ok));
         return ok;
     }
+    LOG_KMS_DEBUG("  DRM_CLIENT_CAP_UNIVERSAL_PLANES: OK\n");
 
 #ifdef USE_LEGACY_KMS
+    LOG_KMS_DEBUG("  Using legacy KMS (atomic disabled at compile time)\n");
     *supports_atomic_modesetting = false;
 #else
     ok = drmSetClientCap(fd, DRM_CLIENT_CAP_ATOMIC, 1);
     if ((ok < 0) && (errno == EOPNOTSUPP)) {
+        LOG_KMS_DEBUG("  DRM_CLIENT_CAP_ATOMIC: not supported (EOPNOTSUPP)\n");
         if (supports_atomic_modesetting != NULL) {
             *supports_atomic_modesetting = false;
         }
@@ -1019,6 +1074,7 @@ static int set_drm_client_caps(int fd, bool *supports_atomic_modesetting) {
         LOG_ERROR("Could not set DRM client atomic capable. drmSetClientCap: %s\n", strerror(ok));
         return ok;
     } else {
+        LOG_KMS_DEBUG("  DRM_CLIENT_CAP_ATOMIC: OK\n");
         if (supports_atomic_modesetting != NULL) {
             *supports_atomic_modesetting = true;
         }
@@ -1035,6 +1091,33 @@ struct drmdev *drmdev_new_from_interface_fd(int fd, void *fd_metadata, const str
     bool supports_atomic_modesetting;
     bool supports_dumb_buffers;
     int ok, master_fd, event_fd;
+
+    LOG_KMS_DEBUG("\n========== DRM device init (fd=%d) ==========\n", fd);
+    LOG_KMS_DEBUG("DRM master status: %s\n", is_drm_master(fd) ? "YES" : "NO");
+
+    // Log DRM version info
+    {
+        drmVersionPtr ver = drmGetVersion(fd);
+        if (ver) {
+            LOG_KMS_DEBUG("DRM driver: %.*s (version %d.%d.%d)\n",
+                ver->name_len, ver->name, ver->version_major, ver->version_minor, ver->version_patchlevel);
+            LOG_KMS_DEBUG("DRM driver desc: %.*s\n", ver->desc_len, ver->desc);
+            LOG_KMS_DEBUG("DRM driver date: %.*s\n", ver->date_len, ver->date);
+            drmFreeVersion(ver);
+        }
+    }
+
+    // Log who else might be using the DRM device
+    LOG_KMS_DEBUG("Checking /proc for other DRM users...\n");
+    {
+        char link_path[256];
+        char target[256];
+        struct stat drm_stat;
+        if (fstat(fd, &drm_stat) == 0) {
+            LOG_KMS_DEBUG("  DRM device: major=%u, minor=%u\n",
+                (unsigned)major(drm_stat.st_rdev), (unsigned)minor(drm_stat.st_rdev));
+        }
+    }
 
     assert_rotations_work();
 
@@ -1054,8 +1137,26 @@ struct drmdev *drmdev_new_from_interface_fd(int fd, void *fd_metadata, const str
     ok = drmGetCap(fd, DRM_CAP_DUMB_BUFFER, &cap);
     if (ok < 0) {
         supports_dumb_buffers = false;
+        LOG_KMS_DEBUG("DRM_CAP_DUMB_BUFFER: not supported\n");
     } else {
         supports_dumb_buffers = !!cap;
+        LOG_KMS_DEBUG("DRM_CAP_DUMB_BUFFER: %s\n", supports_dumb_buffers ? "yes" : "no");
+    }
+
+    // Log additional DRM capabilities
+    {
+        uint64_t c = 0;
+        if (drmGetCap(fd, DRM_CAP_TIMESTAMP_MONOTONIC, &c) == 0)
+            LOG_KMS_DEBUG("DRM_CAP_TIMESTAMP_MONOTONIC: %" PRIu64 "\n", c);
+        c = 0;
+        if (drmGetCap(fd, DRM_CAP_ASYNC_PAGE_FLIP, &c) == 0)
+            LOG_KMS_DEBUG("DRM_CAP_ASYNC_PAGE_FLIP: %" PRIu64 "\n", c);
+        c = 0;
+        if (drmGetCap(fd, DRM_CAP_CURSOR_WIDTH, &c) == 0)
+            LOG_KMS_DEBUG("DRM_CAP_CURSOR_WIDTH: %" PRIu64 "\n", c);
+        c = 0;
+        if (drmGetCap(fd, DRM_CAP_CURSOR_HEIGHT, &c) == 0)
+            LOG_KMS_DEBUG("DRM_CAP_CURSOR_HEIGHT: %" PRIu64 "\n", c);
     }
 
     drmdev->res = drmModeGetResources(fd);
@@ -1065,12 +1166,18 @@ struct drmdev *drmdev_new_from_interface_fd(int fd, void *fd_metadata, const str
         goto fail_free_drmdev;
     }
 
+    LOG_KMS_DEBUG("DRM resources: %d connectors, %d encoders, %d CRTCs, min_size=%ux%u, max_size=%ux%u\n",
+        drmdev->res->count_connectors, drmdev->res->count_encoders, drmdev->res->count_crtcs,
+        drmdev->res->min_width, drmdev->res->min_height,
+        drmdev->res->max_width, drmdev->res->max_height);
+
     drmdev->plane_res = drmModeGetPlaneResources(fd);
     if (drmdev->plane_res == NULL) {
         ok = errno;
         LOG_ERROR("Could not get DRM device planes resources. drmModeGetPlaneResources: %s\n", strerror(ok));
         goto fail_free_resources;
     }
+    LOG_KMS_DEBUG("DRM plane resources: %u planes\n", drmdev->plane_res->count_planes);
 
     drmdev->fd = fd;
 
@@ -1078,21 +1185,25 @@ struct drmdev *drmdev_new_from_interface_fd(int fd, void *fd_metadata, const str
     if (ok != 0) {
         goto fail_free_plane_resources;
     }
+    LOG_KMS_DEBUG("Fetched %zu connectors\n", drmdev->n_connectors);
 
     ok = fetch_encoders(drmdev, &drmdev->encoders, &drmdev->n_encoders);
     if (ok != 0) {
         goto fail_free_connectors;
     }
+    LOG_KMS_DEBUG("Fetched %zu encoders\n", drmdev->n_encoders);
 
     ok = fetch_crtcs(drmdev, &drmdev->crtcs, &drmdev->n_crtcs);
     if (ok != 0) {
         goto fail_free_encoders;
     }
+    LOG_KMS_DEBUG("Fetched %zu CRTCs\n", drmdev->n_crtcs);
 
     ok = fetch_planes(drmdev, &drmdev->planes, &drmdev->n_planes);
     if (ok != 0) {
         goto fail_free_crtcs;
     }
+    LOG_KMS_DEBUG("Fetched %zu planes\n", drmdev->n_planes);
 
     // Rockchip driver always wants the N-th primary/cursor plane to be associated with the N-th CRTC.
     // If we don't respect this, commits will work but not actually show anything on screen.
@@ -1100,21 +1211,30 @@ struct drmdev *drmdev_new_from_interface_fd(int fd, void *fd_metadata, const str
     int cursor_plane_index = 0;
     for (int i = 0; i < drmdev->n_planes; i++) {
         if (drmdev->planes[i].type == DRM_PLANE_TYPE_PRIMARY) {
+            LOG_KMS_DEBUG("Plane %d (id=%u): type=PRIMARY, possible_crtcs=0x%x -> binding to CRTC index %d\n",
+                i, drmdev->planes[i].id, drmdev->planes[i].possible_crtcs, primary_plane_index);
             if ((drmdev->planes[i].possible_crtcs & (1 << primary_plane_index)) != 0) {
                 drmdev->planes[i].possible_crtcs = (1 << primary_plane_index);
             } else {
                 LOG_DEBUG("Primary plane %d does not support CRTC %d.\n", primary_plane_index, primary_plane_index);
+                LOG_KMS_DEBUG("  WARNING: Primary plane %d does not support CRTC %d!\n", primary_plane_index, primary_plane_index);
             }
 
             primary_plane_index++;
         } else if (drmdev->planes[i].type == DRM_PLANE_TYPE_CURSOR) {
+            LOG_KMS_DEBUG("Plane %d (id=%u): type=CURSOR, possible_crtcs=0x%x -> binding to CRTC index %d\n",
+                i, drmdev->planes[i].id, drmdev->planes[i].possible_crtcs, cursor_plane_index);
             if ((drmdev->planes[i].possible_crtcs & (1 << cursor_plane_index)) != 0) {
                 drmdev->planes[i].possible_crtcs = (1 << cursor_plane_index);
             } else {
                 LOG_DEBUG("Cursor plane %d does not support CRTC %d.\n", cursor_plane_index, cursor_plane_index);
+                LOG_KMS_DEBUG("  WARNING: Cursor plane %d does not support CRTC %d!\n", cursor_plane_index, cursor_plane_index);
             }
 
             cursor_plane_index++;
+        } else {
+            LOG_KMS_DEBUG("Plane %d (id=%u): type=OVERLAY, possible_crtcs=0x%x\n",
+                i, drmdev->planes[i].id, drmdev->planes[i].possible_crtcs);
         }
     }
 
@@ -1123,6 +1243,7 @@ struct drmdev *drmdev_new_from_interface_fd(int fd, void *fd_metadata, const str
         LOG_ERROR("Could not create GBM device.\n");
         goto fail_free_planes;
     }
+    LOG_KMS_DEBUG("GBM device created successfully\n");
 
     event_fd = epoll_create1(EPOLL_CLOEXEC);
     if (event_fd < 0) {
@@ -1149,6 +1270,14 @@ struct drmdev *drmdev_new_from_interface_fd(int fd, void *fd_metadata, const str
     drmdev->interface = *interface;
     drmdev->userdata = userdata;
     list_inithead(&drmdev->fbs);
+
+    LOG_KMS_DEBUG("========== DRM device init complete ==========\n");
+    LOG_KMS_DEBUG("  atomic modesetting: %s\n", supports_atomic_modesetting ? "yes" : "no");
+    LOG_KMS_DEBUG("  dumb buffers: %s\n", supports_dumb_buffers ? "yes" : "no");
+    LOG_KMS_DEBUG("  connectors: %zu, encoders: %zu, CRTCs: %zu, planes: %zu\n",
+        drmdev->n_connectors, drmdev->n_encoders, drmdev->n_crtcs, drmdev->n_planes);
+    LOG_KMS_DEBUG("==============================================\n\n");
+
     return drmdev;
 
 fail_close_event_fd:
@@ -1192,11 +1321,14 @@ struct drmdev *drmdev_new_from_path(const char *path, const struct drmdev_interf
     ASSERT_NOT_NULL(path);
     ASSERT_NOT_NULL(interface);
 
+    LOG_KMS_DEBUG("Opening DRM device: %s\n", path);
+
     fd = interface->open(path, O_RDWR, &fd_metadata, userdata);
     if (fd < 0) {
         LOG_ERROR("Could not open DRM device. interface->open: %s\n", strerror(errno));
         return NULL;
     }
+    LOG_KMS_DEBUG("Opened DRM device \"%s\" -> fd=%d\n", path, fd);
 
     drmdev = drmdev_new_from_interface_fd(fd, fd_metadata, interface, userdata);
     if (drmdev == NULL) {
@@ -2669,16 +2801,38 @@ kms_req_commit_common(struct kms_req *req, bool blocking, kms_scanout_cb_t scano
     ASSERT_NOT_NULL(req);
     builder = (struct kms_req_builder *) req;
 
+    LOG_KMS_DEBUG("KMS commit: blocking=%s, n_layers=%d, use_legacy=%s, crtc_id=%u\n",
+        blocking ? "yes" : "no", builder->n_layers,
+        builder->use_legacy ? "yes" : "no",
+        builder->crtc ? builder->crtc->id : 0);
+    if (builder->connector) {
+        LOG_KMS_DEBUG("  connector_id=%u\n", builder->connector->id);
+    }
+    if (builder->has_mode) {
+        LOG_KMS_DEBUG("  requested mode: \"%s\" %ux%u@%uHz\n",
+            builder->mode.name, builder->mode.hdisplay, builder->mode.vdisplay, builder->mode.vrefresh);
+    }
+    for (int li = 0; li < builder->n_layers; li++) {
+        LOG_KMS_DEBUG("  layer[%d]: plane_id=%u, fb_id=%u, src=%ux%u+%u+%u, dst=%ux%u+%u+%u\n",
+            li, builder->layers[li].plane_id, builder->layers[li].layer.drm_fb_id,
+            builder->layers[li].layer.src_w, builder->layers[li].layer.src_h,
+            builder->layers[li].layer.src_x, builder->layers[li].layer.src_y,
+            builder->layers[li].layer.dst_w, builder->layers[li].layer.dst_h,
+            builder->layers[li].layer.dst_x, builder->layers[li].layer.dst_y);
+    }
+
     drmdev_lock(builder->drmdev);
 
     if (builder->drmdev->master_fd < 0) {
         LOG_ERROR("Commit requested, but drmdev doesn't have a DRM master fd right now.\n");
+        LOG_KMS_DEBUG("  FAILED: no DRM master fd\n");
         ok = EBUSY;
         goto fail_unlock;
     }
 
     if (!is_drm_master(builder->drmdev->master_fd)) {
         LOG_ERROR("Commit requested, but drmdev is paused right now.\n");
+        LOG_KMS_DEBUG("  FAILED: not DRM master (fd=%d)\n", builder->drmdev->master_fd);
         ok = EBUSY;
         goto fail_unlock;
     }
@@ -2704,14 +2858,20 @@ kms_req_commit_common(struct kms_req *req, bool blocking, kms_scanout_cb_t scano
 
     if (upload_mode) {
         update_mode = true;
+        LOG_KMS_DEBUG("  Uploading new mode blob...\n");
         mode_blob = drm_mode_blob_new(builder->drmdev->fd, &builder->mode);
         if (mode_blob == NULL) {
+            LOG_KMS_DEBUG("  FAILED to upload mode blob\n");
             ok = EIO;
             goto fail_unlock;
         }
+        LOG_KMS_DEBUG("  Mode blob id=%u\n", mode_blob->blob_id);
     } else if (builder->unset_mode) {
+        LOG_KMS_DEBUG("  Unsetting mode\n");
         update_mode = true;
         mode_blob = NULL;
+    } else {
+        LOG_KMS_DEBUG("  Mode unchanged, no upload needed\n");
     }
 
     if (builder->use_legacy) {
@@ -2771,6 +2931,10 @@ kms_req_commit_common(struct kms_req *req, bool blocking, kms_scanout_cb_t scano
         /// TODO: Handle {src,dst}_{x,y,w,h} here
         /// TODO: Handle setting other properties as well
         if (needs_set_crtc) {
+            LOG_KMS_DEBUG("  Legacy commit: drmModeSetCrtc(crtc=%u, fb=%u, conn=%u, mode=%s)\n",
+                builder->crtc->id, builder->layers[0].layer.drm_fb_id,
+                builder->connector->id,
+                builder->unset_mode ? "(unset)" : builder->mode.name);
             /// TODO: Fetch new connector or current connector here since we seem to need it for drmModeSetCrtc
             ok = drmModeSetCrtc(
                 builder->drmdev->master_fd,
@@ -2785,11 +2949,15 @@ kms_req_commit_common(struct kms_req *req, bool blocking, kms_scanout_cb_t scano
             if (ok != 0) {
                 ok = errno;
                 LOG_ERROR("Could not commit display update. drmModeSetCrtc: %s\n", strerror(ok));
+                LOG_KMS_DEBUG("  FAILED: drmModeSetCrtc: %s\n", strerror(ok));
                 goto fail_maybe_destroy_mode_blob;
             }
+            LOG_KMS_DEBUG("  drmModeSetCrtc: OK\n");
 
             internally_blocking = true;
         } else {
+            LOG_KMS_DEBUG("  Legacy commit: drmModePageFlip(crtc=%u, fb=%u)\n",
+                builder->crtc->id, builder->layers[0].layer.drm_fb_id);
             ok = drmModePageFlip(
                 builder->drmdev->master_fd,
                 builder->crtc->id,
@@ -2800,8 +2968,10 @@ kms_req_commit_common(struct kms_req *req, bool blocking, kms_scanout_cb_t scano
             if (ok != 0) {
                 ok = errno;
                 LOG_ERROR("Could not commit display update. drmModePageFlip: %s\n", strerror(ok));
+                LOG_KMS_DEBUG("  FAILED: drmModePageFlip: %s\n", strerror(ok));
                 goto fail_unref_builder;
             }
+            LOG_KMS_DEBUG("  drmModePageFlip: OK\n");
         }
 
         // This should also be ensured by kms_req_builder_push_fb_layer
@@ -2817,6 +2987,9 @@ kms_req_commit_common(struct kms_req *req, bool blocking, kms_scanout_cb_t scano
         /// TODO: If we can do explicit fencing, don't use the page flip event.
         /// TODO: Can we set OUT_FENCE_PTR even though we didn't set any IN_FENCE_FDs?
         flags = DRM_MODE_PAGE_FLIP_EVENT | (blocking ? 0 : DRM_MODE_ATOMIC_NONBLOCK) | (update_mode ? DRM_MODE_ATOMIC_ALLOW_MODESET : 0);
+        LOG_KMS_DEBUG("  Atomic commit: flags=0x%x (PAGE_FLIP_EVENT%s%s)\n", flags,
+            (flags & DRM_MODE_ATOMIC_NONBLOCK) ? " | NONBLOCK" : "",
+            (flags & DRM_MODE_ATOMIC_ALLOW_MODESET) ? " | ALLOW_MODESET" : "");
 
         // All planes that are not used by us and are connected to our CRTC
         // should be disabled.
@@ -2826,6 +2999,7 @@ kms_req_commit_common(struct kms_req *req, bool blocking, kms_scanout_cb_t scano
                 struct drm_plane *plane = builder->drmdev->planes + i;
 
                 if (drm_plane_is_active(plane) && plane->committed_state.crtc_id == builder->crtc->id) {
+                    LOG_KMS_DEBUG("  Disabling unused plane %u (was on crtc %u)\n", plane->id, builder->crtc->id);
                     drmModeAtomicAddProperty(builder->req, plane->id, plane->ids.crtc_id, 0);
                     drmModeAtomicAddProperty(builder->req, plane->id, plane->ids.fb_id, 0);
                 }
@@ -2848,12 +3022,15 @@ kms_req_commit_common(struct kms_req *req, bool blocking, kms_scanout_cb_t scano
         /// TODO: If we're on raspberry pi and only have one layer, we can do an async pageflip
         /// on the primary plane to replace the next queued frame. (To do _real_ triple buffering
         /// with fully decoupled framerate, potentially)
+        LOG_KMS_DEBUG("  Calling drmModeAtomicCommit...\n");
         ok = drmModeAtomicCommit(builder->drmdev->master_fd, builder->req, flags, kms_req_builder_ref(builder));
         if (ok != 0) {
             ok = errno;
             LOG_ERROR("Could not commit display update. drmModeAtomicCommit: %s\n", strerror(ok));
+            LOG_KMS_DEBUG("  FAILED: drmModeAtomicCommit: %s\n", strerror(ok));
             goto fail_unref_builder;
         }
+        LOG_KMS_DEBUG("  drmModeAtomicCommit: OK\n");
     }
 
     // update struct drm_plane.committed_state for all planes

@@ -1890,6 +1890,7 @@ bool flutterpi_parse_cmdline_args(int argc, char **argv, struct flutterpi_cmdlin
         { "dummy-display", no_argument, &dummy_display_int, 1 },
         { "dummy-display-size", required_argument, NULL, 's' },
         { "drm-fd", required_argument, NULL, 'f' },
+        { "debug-kms", no_argument, NULL, 'K' },
         { 0, 0, 0, 0 },
     };
     memset(result_out, 0, sizeof *result_out);
@@ -1904,6 +1905,7 @@ bool flutterpi_parse_cmdline_args(int argc, char **argv, struct flutterpi_cmdlin
     result_out->engine_argc = 0;
     result_out->engine_argv = NULL;
     result_out->drm_fd = -1;
+    result_out->debug_kms = false;
 
     finished_parsing_options = false;
     while (!finished_parsing_options) {
@@ -2024,6 +2026,10 @@ valid_format:
                 break;
 
 
+            case 'K':  // --debug-kms
+                result_out->debug_kms = true;
+                break;
+
             case 'h': printf("%s", usage); return false;
 
             case '?':
@@ -2053,6 +2059,10 @@ valid_format:
 
     result_out->dummy_display = !!dummy_display_int;
 
+    // Set the global KMS debug flag before any DRM code runs
+    extern bool kms_debug_enabled;
+    kms_debug_enabled = result_out->debug_kms;
+
     return true;
 }
 
@@ -2073,16 +2083,21 @@ static int on_drmdev_open(const char *path, int flags, void **fd_metadata_out, v
     ASSERT_NOT_NULL(fd_metadata_out);
     (void) userdata;
 
+    LOG_KMS_DEBUG("on_drmdev_open: path=%s, flags=0x%x\n", path, flags);
+
 #ifdef HAVE_LIBSEAT
     struct libseat *libseat = userdata;
     if (libseat != NULL) {
+        LOG_KMS_DEBUG("  Opening via libseat...\n");
         ok = libseat_open_device(libseat, path, &fd);
         if (ok < 0) {
             LOG_ERROR("Couldn't open DRM device. libseat_open_device: %s\n", strerror(errno));
+            LOG_KMS_DEBUG("  FAILED: libseat_open_device: %s\n", strerror(errno));
             return -1;
         }
 
         device_id = ok;
+        LOG_KMS_DEBUG("  libseat opened fd=%d, device_id=%d\n", fd, device_id);
         *(intptr_t *) fd_metadata_out = (intptr_t) device_id;
         return fd;
     }
@@ -2090,14 +2105,17 @@ static int on_drmdev_open(const char *path, int flags, void **fd_metadata_out, v
     ASSERT_EQUALS(userdata, NULL);
 #endif
 
+    LOG_KMS_DEBUG("  Opening via open()...\n");
     ok = open(path, flags);
     if (ok < 0) {
         LOG_ERROR("Couldn't open DRM device. open: %s\n", strerror(errno));
+        LOG_KMS_DEBUG("  FAILED: open: %s\n", strerror(errno));
         return -1;
     }
 
     fd = ok;
     device_id = 0;
+    LOG_KMS_DEBUG("  Opened fd=%d\n", fd);
 
     *(intptr_t *) fd_metadata_out = (intptr_t) device_id;
     return fd;
@@ -2146,6 +2164,8 @@ static struct drmdev *find_drmdev(struct libseat *libseat) {
     ASSERT_EQUALS(libseat, NULL);
 #endif
 
+    LOG_KMS_DEBUG("\n========== Scanning for DRM devices ==========\n");
+
     ok = drmGetDevices2(0, devices, sizeof(devices) / sizeof(*devices));
     if (ok < 0) {
         LOG_ERROR("Could not query DRM device list: %s\n", strerror(-ok));
@@ -2153,6 +2173,7 @@ static struct drmdev *find_drmdev(struct libseat *libseat) {
     }
 
     n_devices = ok;
+    LOG_KMS_DEBUG("Found %d DRM device(s)\n", n_devices);
 
     // find a GPU that has a primary node
     drmdev = NULL;
@@ -2161,23 +2182,41 @@ static struct drmdev *find_drmdev(struct libseat *libseat) {
 
         device = devices[i];
 
+        LOG_KMS_DEBUG("\nDevice %d/%d: bustype=%d, available_nodes=0x%x\n",
+            i + 1, n_devices, device->bustype, device->available_nodes);
+        for (int n = 0; n < DRM_NODE_MAX; n++) {
+            if (device->available_nodes & (1 << n)) {
+                LOG_KMS_DEBUG("  Node[%d]: %s\n", n, device->nodes[n]);
+            }
+        }
+
         if (!(device->available_nodes & (1 << DRM_NODE_PRIMARY))) {
+            LOG_KMS_DEBUG("  Skipping: no primary node available\n");
             // We need a primary node.
             continue;
         }
 
+        LOG_KMS_DEBUG("  Trying primary node: %s\n", device->nodes[DRM_NODE_PRIMARY]);
         drmdev = drmdev_new_from_path(device->nodes[DRM_NODE_PRIMARY], &drmdev_interface, libseat);
         if (drmdev == NULL) {
             LOG_ERROR("Could not create drmdev from device at \"%s\". Continuing.\n", device->nodes[DRM_NODE_PRIMARY]);
+            LOG_KMS_DEBUG("  FAILED to create drmdev from \"%s\"\n", device->nodes[DRM_NODE_PRIMARY]);
             continue;
         }
 
+        LOG_KMS_DEBUG("  Checking connectors for connected display...\n");
         for_each_connector_in_drmdev(drmdev, connector) {
+            LOG_KMS_DEBUG("    Connector id=%u: type=%u, type_id=%u, state=%s\n",
+                connector->id, connector->type, connector->type_id,
+                connector->variable_state.connection_state == kConnected_DrmConnectionState ? "connected" :
+                connector->variable_state.connection_state == kDisconnected_DrmConnectionState ? "disconnected" : "unknown");
             if (connector->variable_state.connection_state == kConnected_DrmConnectionState) {
+                LOG_KMS_DEBUG("  Found connected connector id=%u!\n", connector->id);
                 goto found_connected_connector;
             }
         }
         LOG_ERROR("Device \"%s\" doesn't have a display connected. Skipping.\n", device->nodes[DRM_NODE_PRIMARY]);
+        LOG_KMS_DEBUG("  No connected display found on \"%s\"\n", device->nodes[DRM_NODE_PRIMARY]);
         drmdev_unref(drmdev);
         continue;
 
@@ -2193,9 +2232,11 @@ found_connected_connector:
             "Please make sure you've enabled the Fake-KMS driver in raspi-config.\n"
             "If you're not using a Raspberry Pi, please make sure there's KMS support for your graphics chip.\n"
         );
+        LOG_KMS_DEBUG("========== DRM device scan FAILED ==========\n\n");
         goto fail_free_devices;
     }
 
+    LOG_KMS_DEBUG("========== DRM device scan complete ==========\n\n");
     return drmdev;
 
 fail_free_devices:
@@ -2486,6 +2527,7 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
         }
     } else {
         if(cmd_args.has_drm_fd){
+            LOG_KMS_DEBUG("Using user-provided DRM fd=%d\n", cmd_args.drm_fd);
             /* --drm-fd is passed, we don't want flutter-pi to handle the DRM choice */
             drmdev = drmdev_new_from_interface_fd(cmd_args.drm_fd, NULL, &drmdev_interface, libseat);
         }

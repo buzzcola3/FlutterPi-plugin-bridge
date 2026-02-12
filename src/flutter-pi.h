@@ -145,6 +145,8 @@ struct flutterpi_cmdline_args {
 
     bool has_drm_fd;
     int drm_fd;
+
+    bool debug_kms;
 };
 
 int flutterpi_fill_view_properties(bool has_orientation, enum device_orientation orientation, bool has_rotation, int rotation);

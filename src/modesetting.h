@@ -26,6 +26,14 @@
 
 #define DRM_ID_NONE ((uint32_t) 0xFFFFFFFF)
 
+/// Global flag for verbose KMS/DRM debug logging. Set via --debug-kms.
+extern bool kms_debug_enabled;
+
+#define LOG_KMS_DEBUG(fmtstring, ...) \
+    do { if (kms_debug_enabled) fprintf(stderr, "[kms-debug] " fmtstring, ##__VA_ARGS__); } while (0)
+#define LOG_KMS_DEBUG_UNPREFIXED(fmtstring, ...) \
+    do { if (kms_debug_enabled) fprintf(stderr, fmtstring, ##__VA_ARGS__); } while (0)
+
 #define DRM_ID_IS_VALID(id) ((id) != 0 && (id) != DRM_ID_NONE)
 
 // All commented out properties are not present on the RPi.
