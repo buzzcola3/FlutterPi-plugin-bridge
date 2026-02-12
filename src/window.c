@@ -1104,12 +1104,17 @@ static void on_present_frame(void *userdata) {
 
     frame = userdata;
 
+    LOG_KMS_DEBUG("on_present_frame: committing KMS request (blocking)...\n");
+
     TRACER_BEGIN(frame->tracer, "kms_req_commit_nonblocking");
     ok = kms_req_commit_blocking(frame->req, NULL);
     TRACER_END(frame->tracer, "kms_req_commit_nonblocking");
 
     if (ok != 0) {
         LOG_ERROR("Could not commit frame request.\n");
+        LOG_KMS_DEBUG("on_present_frame: FAILED kms_req_commit_blocking: errno=%d (%s)\n", ok, strerror(ok));
+    } else {
+        LOG_KMS_DEBUG("on_present_frame: commit OK\n");
     }
 
     tracer_unref(frame->tracer);
@@ -1157,21 +1162,31 @@ static int kms_window_push_composition_locked(struct window *window, struct fl_l
 
     builder = drmdev_create_request_builder(window->kms.drmdev, window->kms.crtc->id);
     if (builder == NULL) {
+        LOG_KMS_DEBUG("kms_window_push_composition: FAILED to create request builder for crtc_id=%u\n", window->kms.crtc->id);
         ok = ENOMEM;
         goto fail_unref_builder;
     }
+    LOG_KMS_DEBUG("kms_window_push_composition: created request builder (crtc_id=%u, n_layers=%zu)\n",
+        window->kms.crtc->id, fl_layer_composition_get_n_layers(composition));
 
     // We only set the mode once, at the first atomic request.
     if (window->kms.should_apply_mode) {
+        LOG_KMS_DEBUG("  Applying initial mode: connector_id=%u, mode=\"%s\" %ux%u@%uHz\n",
+            window->kms.connector->id,
+            window->kms.mode->name, window->kms.mode->hdisplay,
+            window->kms.mode->vdisplay, window->kms.mode->vrefresh);
+
         ok = kms_req_builder_set_connector(builder, window->kms.connector->id);
         if (ok != 0) {
             LOG_ERROR("Couldn't select connector.\n");
+            LOG_KMS_DEBUG("  FAILED: kms_req_builder_set_connector: %s\n", strerror(ok));
             goto fail_unref_builder;
         }
 
         ok = kms_req_builder_set_mode(builder, window->kms.mode);
         if (ok != 0) {
             LOG_ERROR("Couldn't apply output mode.\n");
+            LOG_KMS_DEBUG("  FAILED: kms_req_builder_set_mode: %s\n", strerror(ok));
             goto fail_unref_builder;
         }
     }
@@ -1179,11 +1194,24 @@ static int kms_window_push_composition_locked(struct window *window, struct fl_l
     for (size_t i = 0; i < fl_layer_composition_get_n_layers(composition); i++) {
         struct fl_layer *layer = fl_layer_composition_peek_layer(composition, i);
 
+        LOG_KMS_DEBUG("  Presenting layer %zu/%zu: surface=%p, is_aa_rect=%s",
+            i + 1, fl_layer_composition_get_n_layers(composition),
+            (void*)layer->surface, layer->props.is_aa_rect ? "yes" : "no");
+        if (layer->props.is_aa_rect) {
+            LOG_KMS_DEBUG_UNPREFIXED(", rect=(%.1f,%.1f %.1fx%.1f)",
+                layer->props.aa_rect.offset.x, layer->props.aa_rect.offset.y,
+                layer->props.aa_rect.size.x, layer->props.aa_rect.size.y);
+        }
+        LOG_KMS_DEBUG_UNPREFIXED(", opacity=%.2f, rotation=%.1f\n",
+            layer->props.opacity, layer->props.rotation);
+
         ok = surface_present_kms(layer->surface, &layer->props, builder);
         if (ok != 0) {
             LOG_ERROR("Couldn't present flutter layer on screen. surface_present_kms: %s\n", strerror(ok));
+            LOG_KMS_DEBUG("  FAILED: surface_present_kms for layer %zu: errno=%d (%s)\n", i, ok, strerror(ok));
             goto fail_unref_builder;
         }
+        LOG_KMS_DEBUG("  Layer %zu presented OK\n", i + 1);
     }
 
     // add cursor infos

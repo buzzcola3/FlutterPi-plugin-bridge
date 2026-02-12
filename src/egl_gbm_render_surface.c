@@ -11,6 +11,7 @@
 #include "egl_gbm_render_surface.h"
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdlib.h>
 
 #include "egl.h"
@@ -404,6 +405,10 @@ static int egl_gbm_render_surface_present_kms(struct surface *s, const struct fl
     bo = egl_surface->locked_front_fb->bo;
     meta = gbm_bo_get_user_data(bo);
     if (meta == NULL) {
+        LOG_KMS_DEBUG("egl_gbm_present_kms: creating new fb meta for GBM bo (w=%u, h=%u, format=0x%x, modifier=0x%" PRIx64 ")\n",
+            gbm_bo_get_width(bo), gbm_bo_get_height(bo),
+            gbm_bo_get_format(bo), (uint64_t)gbm_bo_get_modifier(bo));
+
         meta = malloc(sizeof *meta);
         if (meta == NULL) {
             ok = ENOMEM;
@@ -428,8 +433,10 @@ static int egl_gbm_render_surface_present_kms(struct surface *s, const struct fl
             if (fb_id == 0) {
                 ok = EIO;
                 LOG_ERROR("Couldn't add GBM buffer as DRM framebuffer.\n");
+                LOG_KMS_DEBUG("  FAILED: drmdev_add_fb_from_gbm_bo (non-opaque) returned 0\n");
                 goto fail_free_meta;
             }
+            LOG_KMS_DEBUG("  Added non-opaque fb_id=%u\n", fb_id);
 
             meta->has_nonopaque_fb_id = true;
             meta->nonopaque_fb_id = fb_id;
@@ -450,8 +457,10 @@ static int egl_gbm_render_surface_present_kms(struct surface *s, const struct fl
             if (opaque_fb_id == 0) {
                 ok = EIO;
                 LOG_ERROR("Couldn't add GBM buffer as opaque DRM framebuffer.\n");
+                LOG_KMS_DEBUG("  FAILED: drmdev_add_fb_from_gbm_bo (opaque) returned 0\n");
                 goto fail_remove_fb;
             }
+            LOG_KMS_DEBUG("  Added opaque fb_id=%u\n", opaque_fb_id);
 
             meta->has_opaque_fb_id = true;
             meta->opaque_fb_id = opaque_fb_id;
@@ -463,6 +472,7 @@ static int egl_gbm_render_surface_present_kms(struct surface *s, const struct fl
         if (!meta->has_nonopaque_fb_id && !meta->has_opaque_fb_id) {
             ok = EIO;
             LOG_ERROR("Couldn't add GBM buffer as DRM framebuffer.\n");
+            LOG_KMS_DEBUG("  FAILED: no fb created (neither opaque nor non-opaque). pixel_format=%d\n", egl_surface->pixel_format);
             goto fail_free_meta;
         }
 
@@ -515,6 +525,11 @@ static int egl_gbm_render_surface_present_kms(struct surface *s, const struct fl
     }
 
     TRACER_BEGIN(egl_surface->surface.tracer, "kms_req_builder_push_fb_layer");
+    LOG_KMS_DEBUG("egl_gbm_present_kms: pushing fb layer: fb_id=%u, format=%d, modifier=0x%" PRIx64 ", dst=(%d,%d %ux%u)\n",
+        fb_id, pixel_format,
+        (uint64_t)gbm_bo_get_modifier(bo),
+        (int32_t) props->aa_rect.offset.x, (int32_t) props->aa_rect.offset.y,
+        (uint32_t) props->aa_rect.size.x, (uint32_t) props->aa_rect.size.y);
     ok = kms_req_builder_push_fb_layer(
         builder,
         &(const struct kms_fb_layer){
@@ -550,8 +565,10 @@ static int egl_gbm_render_surface_present_kms(struct surface *s, const struct fl
     );
     TRACER_END(egl_surface->surface.tracer, "kms_req_builder_push_fb_layer");
     if (ok != 0) {
+        LOG_KMS_DEBUG("  FAILED: kms_req_builder_push_fb_layer: errno=%d (%s)\n", ok, strerror(ok));
         goto fail_unref_locked_fb;
     }
+    LOG_KMS_DEBUG("egl_gbm_present_kms: fb layer pushed OK\n");
 
     surface_unlock(s);
     return ok;
