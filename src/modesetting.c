@@ -1873,7 +1873,7 @@ uint32_t drmdev_add_fb_from_gbm_bo_locked(struct drmdev *drmdev, struct gbm_bo *
     // Returns DRM_FORMAT_MOD_INVALID on failure, or DRM_FORMAT_MOD_LINEAR
     // for dumb buffers.
     uint64_t modifier = gbm_bo_get_modifier(bo);
-    bool has_modifiers = modifier != DRM_FORMAT_MOD_INVALID;
+    bool has_modifiers = modifier != DRM_FORMAT_MOD_INVALID && modifier != DRM_FORMAT_MOD_LINEAR;
 
     for (int i = 0; i < n_planes; i++) {
         // gbm_bo_get_handle_for_plane will return -1 (in gbm_bo_handle.s32) and

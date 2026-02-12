@@ -535,7 +535,8 @@ static int egl_gbm_render_surface_present_kms(struct surface *s, const struct fl
         &(const struct kms_fb_layer){
             .drm_fb_id = fb_id,
             .format = pixel_format,
-            .has_modifier = gbm_bo_get_modifier(bo) != DRM_FORMAT_MOD_INVALID,
+            .has_modifier = gbm_bo_get_modifier(bo) != DRM_FORMAT_MOD_INVALID
+                            && gbm_bo_get_modifier(bo) != DRM_FORMAT_MOD_LINEAR,
             .modifier = gbm_bo_get_modifier(bo),
 
             .dst_x = (int32_t) props->aa_rect.offset.x,
