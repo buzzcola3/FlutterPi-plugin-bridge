@@ -3,7 +3,7 @@
 
 #include <sentry.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "platformchannel.h"
 #include "pluginregistry.h"
 #include "util/logging.h"
@@ -755,7 +755,7 @@ static void on_method_call(void *userdata, const FlutterPlatformMessage *message
     }
 }
 
-enum plugin_init_result sentry_plugin_deinit(struct flutterpi *flutterpi, void **userdata_out) {
+enum plugin_init_result sentry_plugin_deinit(struct flutter_drm_embedder *flutter_drm_embedder, void **userdata_out) {
     struct sentry_plugin *plugin;
     int ok;
 
@@ -765,7 +765,7 @@ enum plugin_init_result sentry_plugin_deinit(struct flutterpi *flutterpi, void *
     }
 
     ok = plugin_registry_set_receiver_v2_locked(
-        flutterpi_get_plugin_registry(flutterpi),
+        flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder),
         SENTRY_PLUGIN_METHOD_CHANNEL,
         on_method_call,
         plugin
@@ -780,7 +780,7 @@ enum plugin_init_result sentry_plugin_deinit(struct flutterpi *flutterpi, void *
     return PLUGIN_INIT_RESULT_INITIALIZED;
 }
 
-void sentry_plugin_init(struct flutterpi *flutterpi, void *userdata) {
+void sentry_plugin_init(struct flutter_drm_embedder *flutter_drm_embedder, void *userdata) {
     struct sentry_plugin *plugin;
 
     ASSERT_NOT_NULL(userdata);
@@ -790,8 +790,8 @@ void sentry_plugin_init(struct flutterpi *flutterpi, void *userdata) {
         sentry_close();
     }
 
-    plugin_registry_remove_receiver_v2_locked(flutterpi_get_plugin_registry(flutterpi), SENTRY_PLUGIN_METHOD_CHANNEL);
+    plugin_registry_remove_receiver_v2_locked(flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder), SENTRY_PLUGIN_METHOD_CHANNEL);
     free(plugin);
 }
 
-FLUTTERPI_PLUGIN("sentry", sentry_plugin_init, sentry_plugin_deinit, NULL);
+FLUTTER_DRM_EMBEDDER_PLUGIN("sentry", sentry_plugin_init, sentry_plugin_deinit, NULL);

@@ -14,8 +14,8 @@
  * Copyright (c) 2022, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_VK_RENDERER_H
-#define _FLUTTERPI_SRC_VK_RENDERER_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_VK_RENDERER_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_VK_RENDERER_H
 
 #include "util/collection.h"
 #include "util/refcounting.h"
@@ -34,8 +34,8 @@ struct vk_renderer;
  * @brief Create a new vulkan renderer with some reasonable defaults.
  *
  * Creates a vulkan instance with:
- * - app name `flutter-pi`, version 1.0.0
- * - engine `flutter-pi`, version 1.0.0
+ * - app name `flutter-drm-embedder`, version 1.0.0
+ * - engine `flutter-drm-embedder`, version 1.0.0
  * - vulkan version 1.1.0
  * - khronos validation layers and debug utils enabled, if supported and VULKAN_DEBUG is defined
  *
@@ -129,4 +129,4 @@ ATTR_PURE const char **vk_renderer_get_enabled_device_extensions(struct vk_rende
  */
 ATTR_PURE int vk_renderer_find_mem_type(struct vk_renderer *renderer, VkMemoryPropertyFlags flags, uint32_t req_bits);
 
-#endif  // _FLUTTERPI_SRC_VK_RENDERER_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_VK_RENDERER_H

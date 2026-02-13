@@ -4,13 +4,13 @@
 #include <errno.h>
 
 #include "cursor.h"
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "pluginregistry.h"
 #include "util/asserts.h"
 #include "util/logging.h"
 
 struct plugin {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     char label[256];
     uint32_t primary_color;  // ARGB8888 (blue is the lowest byte)
     char isolate_id[32];
@@ -123,7 +123,7 @@ static void on_receive_platform(void *userdata, const FlutterPlatformMessage *me
             }
 
             // if the list contains the current orientation, we just return and don't change the current orientation at all.
-            if (o == flutterpi.view.orientation) {
+            if (o == flutter_drm_embedder.view.orientation) {
                 return platch_respond_success_json(responsehandle, NULL);
             }
 
@@ -136,16 +136,16 @@ static void on_receive_platform(void *userdata, const FlutterPlatformMessage *me
             if (preferred_orientations[i]) {
                 FlutterEngineResult result;
 
-                flutterpi_fill_view_properties(true, i, false, 0);
+                flutter_drm_embedder_fill_view_properties(true, i, false, 0);
 
-                compositor_apply_cursor_state(false, flutterpi.view.rotation, flutterpi.display.pixel_ratio);
+                compositor_apply_cursor_state(false, flutter_drm_embedder.view.rotation, flutter_drm_embedder.display.pixel_ratio);
 
                 // send updated window metrics to flutter
-                result = flutterpi.flutter.libflutter_engine.FlutterEngineSendWindowMetricsEvent(flutterpi.flutter.engine, &(const FlutterWindowMetricsEvent) {
+                result = flutter_drm_embedder.flutter.libflutter_engine.FlutterEngineSendWindowMetricsEvent(flutter_drm_embedder.flutter.engine, &(const FlutterWindowMetricsEvent) {
                     .struct_size = sizeof(FlutterWindowMetricsEvent),
-                    .width = flutterpi.view.width,
-                    .height = flutterpi.view.height,
-                    .pixel_ratio = flutterpi.display.pixel_ratio
+                    .width = flutter_drm_embedder.view.width,
+                    .height = flutter_drm_embedder.view.height,
+                    .pixel_ratio = flutter_drm_embedder.display.pixel_ratio
                 });
                 if (result != kSuccess) {
                     fprintf(stderr, "[services] Could not send updated window metrics to flutter. FlutterEngineSendWindowMetricsEvent: %s\n", FLUTTER_RESULT_TO_STRING(result));
@@ -213,7 +213,7 @@ static void on_receive_platform(void *userdata, const FlutterPlatformMessage *me
          */
     } else if (streq(object.method, "SystemNavigator.pop")) {
         LOG_DEBUG("received SystemNavigator.pop. Exiting...\n");
-        flutterpi_schedule_exit(flutterpi);
+        flutter_drm_embedder_schedule_exit(flutter_drm_embedder);
     }
 
     platch_free_obj(&object);
@@ -373,7 +373,7 @@ static void on_receive_mouse_cursor(ASSERTED void *userdata, const FlutterPlatfo
             return;
         }
 
-        flutterpi_set_pointer_kind(plugin->flutterpi, kind);
+        flutter_drm_embedder_set_pointer_kind(plugin->flutter_drm_embedder, kind);
 
         platch_respond_success_std(message->response_handle, &STDNULL);
     } else {
@@ -381,21 +381,21 @@ static void on_receive_mouse_cursor(ASSERTED void *userdata, const FlutterPlatfo
     }
 }
 
-enum plugin_init_result services_init(struct flutterpi *flutterpi, void **userdata_out) {
+enum plugin_init_result services_init(struct flutter_drm_embedder *flutter_drm_embedder, void **userdata_out) {
     struct plugin_registry *registry;
     struct plugin *plugin;
     int ok;
 
-    ASSUME(flutterpi);
+    ASSUME(flutter_drm_embedder);
 
-    registry = flutterpi_get_plugin_registry(flutterpi);
+    registry = flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder);
 
     plugin = malloc(sizeof *plugin);
     if (plugin == NULL) {
         goto fail_return_error;
     }
 
-    plugin->flutterpi = flutterpi;
+    plugin->flutter_drm_embedder = flutter_drm_embedder;
 
     ok = plugin_registry_set_receiver_v2_locked(registry, FLUTTER_NAVIGATION_CHANNEL, on_receive_navigation, plugin);
     if (ok != 0) {
@@ -465,14 +465,14 @@ fail_return_error:
     return PLUGIN_INIT_RESULT_ERROR;
 }
 
-void services_deinit(struct flutterpi *flutterpi, void *userdata) {
+void services_deinit(struct flutter_drm_embedder *flutter_drm_embedder, void *userdata) {
     struct plugin_registry *registry;
     struct plugin *plugin;
 
-    ASSUME(flutterpi);
+    ASSUME(flutter_drm_embedder);
     ASSUME(userdata);
 
-    registry = flutterpi_get_plugin_registry(flutterpi);
+    registry = flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder);
     plugin = userdata;
 
     plugin_registry_remove_receiver_v2_locked(registry, FLUTTER_NAVIGATION_CHANNEL);
@@ -484,4 +484,4 @@ void services_deinit(struct flutterpi *flutterpi, void *userdata) {
     free(plugin);
 }
 
-FLUTTERPI_PLUGIN("services", services, services_init, services_deinit)
+FLUTTER_DRM_EMBEDDER_PLUGIN("services", services, services_init, services_deinit)

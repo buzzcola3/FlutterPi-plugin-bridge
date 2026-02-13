@@ -16,7 +16,7 @@
 
 #include <filesystem_layout.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "util/asserts.h"
 #include "util/collection.h"
 #include "util/logging.h"
@@ -251,7 +251,7 @@ void flutter_paths_free(struct flutter_paths *paths) {
     free(paths);
 }
 
-struct flutter_paths *fs_layout_flutterpi_resolve(const char *app_bundle_path, enum flutter_runtime_mode runtime_mode) {
+struct flutter_paths *fs_layout_flutter_drm_embedder_resolve(const char *app_bundle_path, enum flutter_runtime_mode runtime_mode) {
     return resolve(
         app_bundle_path,
         runtime_mode,

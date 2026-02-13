@@ -2,7 +2,7 @@
 /*
  * Pixel Formats
  *
- * A list of pixel formats that flutter-pi supports, with details
+ * A list of pixel formats that flutter-drm-embedder supports, with details
  * about their composition.
  *
  * Provides a translations between DRM, EGL/GL, fbdev, vulkan and
@@ -11,8 +11,8 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_PIXEL_FORMAT_H
-#define _FLUTTERPI_SRC_PIXEL_FORMAT_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_PIXEL_FORMAT_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_PIXEL_FORMAT_H
 
 #include <stdbool.h>
 
@@ -421,4 +421,4 @@ COMPILE_ASSERT(PIXFMT_RGB565 == 0);
 #define ASSERT_PIXFMT_VALID(format) ASSERT_MSG(format >= PIXFMT_RGB565 && format <= PIXFMT_MAX, "Invalid pixel format")
 #define ASSUME_PIXFMT_VALID(format) ASSUME((format) >= PIXFMT_RGB565 && (format) <= PIXFMT_MAX)
 
-#endif  // _FLUTTERPI_SRC_PIXEL_FORMAT_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_PIXEL_FORMAT_H

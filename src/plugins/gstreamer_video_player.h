@@ -1,5 +1,5 @@
-#ifndef _FLUTTERPI_INCLUDE_PLUGINS_OMXPLAYER_VIDEO_PLUGIN_H
-#define _FLUTTERPI_INCLUDE_PLUGINS_OMXPLAYER_VIDEO_PLUGIN_H
+#ifndef _FLUTTER_DRM_EMBEDDER_INCLUDE_PLUGINS_OMXPLAYER_VIDEO_PLUGIN_H
+#define _FLUTTER_DRM_EMBEDDER_INCLUDE_PLUGINS_OMXPLAYER_VIDEO_PLUGIN_H
 
 #include "util/collection.h"
 #include "util/lock_ops.h"
@@ -60,34 +60,34 @@ struct buffering_state {
 
 struct video_info;
 struct gstplayer;
-struct flutterpi;
+struct flutter_drm_embedder;
 
 /// Create a gstreamer video player that loads the video from a flutter asset.
 ///     @arg asset_path     The path of the asset inside the asset bundle.
 ///     @arg package_name   The name of the package containing the asset
 ///     @arg userdata       The userdata associated with this player
-struct gstplayer *gstplayer_new_from_asset(struct flutterpi *flutterpi, const char *asset_path, const char *package_name, void *userdata);
+struct gstplayer *gstplayer_new_from_asset(struct flutter_drm_embedder *flutter_drm_embedder, const char *asset_path, const char *package_name, void *userdata);
 
 /// Create a gstreamer video player that loads the video from a network URI.
 ///     @arg uri          The URI to the video. (for example, http://, https://, rtmp://, rtsp://)
 ///     @arg format_hint  A hint to the format of the video. FORMAT_HINT_NONE means there's no hint.
 ///     @arg userdata     The userdata associated with this player.
-struct gstplayer *gstplayer_new_from_network(struct flutterpi *flutterpi, const char *uri, enum format_hint format_hint, void *userdata);
+struct gstplayer *gstplayer_new_from_network(struct flutter_drm_embedder *flutter_drm_embedder, const char *uri, enum format_hint format_hint, void *userdata);
 
 /// Create a gstreamer video player that loads the video from a file URI.
 ///     @arg uri        The file:// URI to the video.
 ///     @arg userdata   The userdata associated with this player.
-struct gstplayer *gstplayer_new_from_file(struct flutterpi *flutterpi, const char *uri, void *userdata);
+struct gstplayer *gstplayer_new_from_file(struct flutter_drm_embedder *flutter_drm_embedder, const char *uri, void *userdata);
 
 /// Create a gstreamer video player with a custom gstreamer pipeline.
 ///     @arg pipeline  The description of the custom pipeline that should be used. Should contain an appsink called "sink".
 ///     @arg userdata  The userdata associated with this player.
-struct gstplayer *gstplayer_new_from_pipeline(struct flutterpi *flutterpi, const char *pipeline, void *userdata);
+struct gstplayer *gstplayer_new_from_pipeline(struct flutter_drm_embedder *flutter_drm_embedder, const char *pipeline, void *userdata);
 
 /// Destroy this gstreamer player instance and the resources
 /// associated with it. (texture, gstreamer pipeline, etc)
 ///
-/// Should be called on the flutterpi main/platform thread,
+/// Should be called on the flutter_drm_embedder main/platform thread,
 /// because otherwise destroying the gstreamer event bus listener
 /// might be a race condition.
 void gstplayer_destroy(struct gstplayer *player);
@@ -123,7 +123,7 @@ void gstplayer_put_http_header(struct gstplayer *player, const char *key, const 
 int gstplayer_initialize(struct gstplayer *player);
 
 /// Get the video info. If the video info (format, size, etc) is already known, @arg callback will be called
-/// synchronously, inside this call. If the video info is not known, @arg callback will be called on the flutter-pi
+/// synchronously, inside this call. If the video info is not known, @arg callback will be called on the flutter-drm-embedder
 /// platform thread as soon as the info is known.
 ///     @returns The handle for the deferred callback.
 //struct sd_event_source_generic *gstplayer_probe_video_info(struct gstplayer *player, gstplayer_info_callback_t callback, void *userdata);
@@ -174,7 +174,7 @@ struct notifier *gstplayer_get_video_info_notifier(struct gstplayer *player);
 /// @brief Get the value notifier for the buffering state.
 ///
 /// Gets notified with a value of type `struct buffering_state*` when the buffering state changes.
-/// The listeners will be called on the main flutterpi platform thread.
+/// The listeners will be called on the main flutter_drm_embedder platform thread.
 struct notifier *gstplayer_get_buffering_state_notifier(struct gstplayer *player);
 
 /// @brief Get the change notifier for errors.

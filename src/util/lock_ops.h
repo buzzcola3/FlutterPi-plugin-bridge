@@ -6,8 +6,8 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_UTIL_LOCK_OPS_H
-#define _FLUTTERPI_SRC_UTIL_LOCK_OPS_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_UTIL_LOCK_OPS_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_UTIL_LOCK_OPS_H
 
 #include <pthread.h>
 
@@ -59,4 +59,4 @@
         (void) ok;                                                      \
     }
 
-#endif  // _FLUTTERPI_SRC_UTIL_LOCK_OPS_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_UTIL_LOCK_OPS_H

@@ -14,7 +14,7 @@
 
 #include <alloca.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "platformchannel.h"
 #include "util/collection.h"
 #include "util/list.h"
@@ -22,10 +22,10 @@
 #include "util/logging.h"
 
 /**
- * @brief details of a plugin for flutter-pi.
+ * @brief details of a plugin for flutter-drm-embedder.
  *
  * All plugins are initialized (by calling their "init" callback)
- * when @ref plugin_registry_ensure_plugins_initialized is called by flutter-pi.
+ * when @ref plugin_registry_ensure_plugins_initialized is called by flutter-drm-embedder.
  *
  * In the init callback, you probably want to do stuff like
  * register callbacks for some method channels your plugin uses
@@ -34,7 +34,7 @@
 struct plugin_instance {
     struct list_head entry;
 
-    const struct flutterpi_plugin_v2 *plugin;
+    const struct flutter_drm_embedder_plugin_v2 *plugin;
     void *userdata;
     bool initialized;
 };
@@ -51,7 +51,7 @@ struct platch_obj_cb_data {
 
 struct plugin_registry {
     pthread_mutex_t lock;
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     struct list_head plugins;
     struct list_head callbacks;
 };
@@ -60,7 +60,7 @@ DEFINE_STATIC_LOCK_OPS(plugin_registry, lock)
 
 struct static_plugin_list_entry {
     struct list_head entry;
-    const struct flutterpi_plugin_v2 *plugin;
+    const struct flutter_drm_embedder_plugin_v2 *plugin;
 };
 
 static pthread_once_t static_plugins_init_flag = PTHREAD_ONCE_INIT;
@@ -99,7 +99,7 @@ static struct platch_obj_cb_data *get_cb_data_by_channel_locked(struct plugin_re
     return NULL;
 }
 
-struct plugin_registry *plugin_registry_new(struct flutterpi *flutterpi) {
+struct plugin_registry *plugin_registry_new(struct flutter_drm_embedder *flutter_drm_embedder) {
     struct plugin_registry *reg;
     ASSERTED int ok;
 
@@ -114,7 +114,7 @@ struct plugin_registry *plugin_registry_new(struct flutterpi *flutterpi) {
     list_inithead(&reg->plugins);
     list_inithead(&reg->callbacks);
 
-    reg->flutterpi = flutterpi;
+    reg->flutter_drm_embedder = flutter_drm_embedder;
     return reg;
 
     return NULL;
@@ -192,7 +192,7 @@ fail_return_ok:
     return ok;
 }
 
-void plugin_registry_add_plugin_locked(struct plugin_registry *registry, const struct flutterpi_plugin_v2 *plugin) {
+void plugin_registry_add_plugin_locked(struct plugin_registry *registry, const struct flutter_drm_embedder_plugin_v2 *plugin) {
     struct plugin_instance *instance;
 
     instance = malloc(sizeof *instance);
@@ -205,7 +205,7 @@ void plugin_registry_add_plugin_locked(struct plugin_registry *registry, const s
     list_addtail(&instance->entry, &registry->plugins);
 }
 
-void plugin_registry_add_plugin(struct plugin_registry *registry, const struct flutterpi_plugin_v2 *plugin) {
+void plugin_registry_add_plugin(struct plugin_registry *registry, const struct flutter_drm_embedder_plugin_v2 *plugin) {
     plugin_registry_lock(registry);
     plugin_registry_add_plugin_locked(registry, plugin);
     plugin_registry_unlock(registry);
@@ -238,13 +238,13 @@ int plugin_registry_ensure_plugins_initialized(struct plugin_registry *registry)
 
     list_for_each_entry(struct plugin_instance, instance, &registry->plugins, entry) {
         if (instance->initialized == false) {
-            result = instance->plugin->init(registry->flutterpi, &instance->userdata);
+            result = instance->plugin->init(registry->flutter_drm_embedder, &instance->userdata);
             if (result == PLUGIN_INIT_RESULT_ERROR) {
                 LOG_ERROR("Error initializing plugin \"%s\".\n", instance->plugin->name);
                 goto fail_deinit_all_initialized;
             } else if (result == PLUGIN_INIT_RESULT_NOT_APPLICABLE) {
                 // This is not an error.
-                LOG_DEBUG("INFO: Plugin \"%s\" is not available in this flutter-pi instance.\n", instance->plugin->name);
+                LOG_DEBUG("INFO: Plugin \"%s\" is not available in this flutter-drm-embedder instance.\n", instance->plugin->name);
                 continue;
             }
 
@@ -267,7 +267,7 @@ int plugin_registry_ensure_plugins_initialized(struct plugin_registry *registry)
 fail_deinit_all_initialized:
     list_for_each_entry(struct plugin_instance, instance, &registry->plugins, entry) {
         if (instance->initialized) {
-            instance->plugin->deinit(registry->flutterpi, instance->userdata);
+            instance->plugin->deinit(registry->flutter_drm_embedder, instance->userdata);
             instance->initialized = false;
         }
     }
@@ -280,7 +280,7 @@ void plugin_registry_ensure_plugins_deinitialized(struct plugin_registry *regist
 
     list_for_each_entry(struct plugin_instance, instance, &registry->plugins, entry) {
         if (instance->initialized == true) {
-            instance->plugin->deinit(registry->flutterpi, instance->userdata);
+            instance->plugin->deinit(registry->flutter_drm_embedder, instance->userdata);
             instance->initialized = false;
         }
     }
@@ -374,7 +374,7 @@ int plugin_registry_set_receiver_v2(
 int plugin_registry_set_receiver_locked(const char *channel, enum platch_codec codec, platch_obj_recv_callback callback) {
     struct plugin_registry *registry;
 
-    registry = flutterpi_get_plugin_registry(flutterpi);
+    registry = flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder);
     ASSUME(registry != NULL);
 
     return set_receiver_locked(registry, channel, codec, callback, NULL, NULL);
@@ -383,7 +383,7 @@ int plugin_registry_set_receiver_locked(const char *channel, enum platch_codec c
 int plugin_registry_set_receiver(const char *channel, enum platch_codec codec, platch_obj_recv_callback callback) {
     struct plugin_registry *registry;
 
-    registry = flutterpi_get_plugin_registry(flutterpi);
+    registry = flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder);
     ASSUME(registry != NULL);
 
     return set_receiver(registry, channel, codec, callback, NULL, NULL);
@@ -417,7 +417,7 @@ int plugin_registry_remove_receiver_v2(struct plugin_registry *registry, const c
 int plugin_registry_remove_receiver_locked(const char *channel) {
     struct plugin_registry *registry;
 
-    registry = flutterpi_get_plugin_registry(flutterpi);
+    registry = flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder);
     ASSUME(registry != NULL);
 
     return plugin_registry_remove_receiver_v2_locked(registry, channel);
@@ -426,7 +426,7 @@ int plugin_registry_remove_receiver_locked(const char *channel) {
 int plugin_registry_remove_receiver(const char *channel) {
     struct plugin_registry *registry;
 
-    registry = flutterpi_get_plugin_registry(flutterpi);
+    registry = flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder);
     ASSUME(registry != NULL);
 
     return plugin_registry_remove_receiver_v2(registry, channel);
@@ -469,7 +469,7 @@ static void static_plugin_registry_ensure_initialized() {
     pthread_once(&static_plugins_init_flag, static_plugin_registry_initialize);
 }
 
-void static_plugin_registry_add_plugin(const struct flutterpi_plugin_v2 *plugin) {
+void static_plugin_registry_add_plugin(const struct flutter_drm_embedder_plugin_v2 *plugin) {
     struct static_plugin_list_entry *entry;
     ASSERTED int ok;
 

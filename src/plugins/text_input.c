@@ -8,7 +8,7 @@
 
 #include <xkbcommon/xkbcommon-keysyms.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "pluginregistry.h"
 #include "util/asserts.h"
 
@@ -247,7 +247,7 @@ static int on_set_client(struct platch_obj *object, FlutterPlatformMessageRespon
     if (autocorrect && !text_input.warned_about_autocorrect) {
         printf(
             "[text_input] warning: flutter requested native autocorrect, which"
-            "is not supported by flutter-pi.\n"
+            "is not supported by flutter-drm-embedder.\n"
         );
         text_input.warned_about_autocorrect = true;
     }
@@ -796,11 +796,11 @@ int textin_on_xkb_keysym(xkb_keysym_t keysym) {
     return 0;
 }
 
-enum plugin_init_result textin_init(struct flutterpi *flutterpi, void **userdata_out) {
+enum plugin_init_result textin_init(struct flutter_drm_embedder *flutter_drm_embedder, void **userdata_out) {
     struct text_input *textin;
     int ok;
 
-    (void) flutterpi;
+    (void) flutter_drm_embedder;
 
     textin = malloc(sizeof *textin);
     if (textin == NULL) {
@@ -833,9 +833,9 @@ enum plugin_init_result textin_init(struct flutterpi *flutterpi, void **userdata
     return PLUGIN_INIT_RESULT_INITIALIZED;
 }
 
-void textin_deinit(struct flutterpi *flutterpi, void *userdata) {
-    plugin_registry_remove_receiver_v2_locked(flutterpi_get_plugin_registry(flutterpi), TEXT_INPUT_CHANNEL);
+void textin_deinit(struct flutter_drm_embedder *flutter_drm_embedder, void *userdata) {
+    plugin_registry_remove_receiver_v2_locked(flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder), TEXT_INPUT_CHANNEL);
     free(userdata);
 }
 
-FLUTTERPI_PLUGIN("text input", text_input, textin_init, textin_deinit)
+FLUTTER_DRM_EMBEDDER_PLUGIN("text input", text_input, textin_init, textin_deinit)

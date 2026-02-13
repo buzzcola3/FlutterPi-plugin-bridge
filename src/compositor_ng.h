@@ -7,13 +7,13 @@
  * Copyright (c) 2022, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_COMPOSITOR_NG_H
-#define _FLUTTERPI_SRC_COMPOSITOR_NG_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_COMPOSITOR_NG_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_COMPOSITOR_NG_H
 
 #include <flutter_embedder.h>
 
 #include "cursor.h"
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "frame_scheduler.h"
 #include "modesetting.h"
 #include "pixel_format.h"
@@ -203,4 +203,4 @@ DECLARE_REF_OPS(fl_layer_composition)
 size_t fl_layer_composition_get_n_layers(struct fl_layer_composition *composition);
 struct fl_layer *fl_layer_composition_peek_layer(struct fl_layer_composition *composition, int layer);
 
-#endif  // _FLUTTERPI_SRC_COMPOSITOR_NG_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_COMPOSITOR_NG_H

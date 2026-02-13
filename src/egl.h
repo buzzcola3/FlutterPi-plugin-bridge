@@ -5,8 +5,8 @@
  * Copyright (c) 2022, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_EGL_H
-#define _FLUTTERPI_SRC_EGL_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_EGL_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_EGL_H
 
 #include <stdbool.h>
 #include <string.h>
@@ -478,4 +478,4 @@ static inline const char *egl_strerror(EGLenum result) {
     #define LOG_EGL_ERROR(result, fmt, ...) LOG_ERROR(fmt ": %s\n", __VA_ARGS__ egl_strerror(result))
 #endif
 
-#endif  // _FLUTTERPI_SRC_EGL_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_EGL_H

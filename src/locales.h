@@ -7,8 +7,8 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_LOCALES_H
-#define _FLUTTERPI_SRC_LOCALES_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_LOCALES_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_LOCALES_H
 
 #include <flutter_embedder.h>
 
@@ -45,4 +45,4 @@ locales_on_compute_platform_resolved_locale(struct locales *locales, const Flutt
 
 void locales_print(const struct locales *locales);
 
-#endif  // _FLUTTERPI_SRC_LOCALES_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_LOCALES_H

@@ -272,7 +272,7 @@ struct gl_renderer *gl_renderer_new_from_gbm_device(
     }
 
     if (!check_egl_extension(egl_client_exts, egl_display_exts, "EGL_KHR_surfaceless_context")) {
-        LOG_ERROR("EGL doesn't support the EGL_KHR_surfaceless_context extension, which is required by flutter-pi.\n");
+        LOG_ERROR("EGL doesn't support the EGL_KHR_surfaceless_context extension, which is required by flutter-drm-embedder.\n");
         goto fail_terminate_display;
     }
 

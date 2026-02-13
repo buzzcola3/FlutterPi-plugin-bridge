@@ -1,42 +1,42 @@
 ## 📰 NEWS
-- Added a (not complete) sentry plugin, see: https://github.com/ardera/flutter-pi/wiki/Sentry-Support
+- Added a (not complete) sentry plugin, see: https://github.com/ardera/flutter-drm-embedder/wiki/Sentry-Support
 - There's now flutterpi tool to make building the app easier: https://pub.dev/packages/flutterpi_tool
 
-# flutter-pi
+# flutter-drm-embedder
 A light-weight Flutter Engine Embedder for Raspberry Pi. Inspired by https://github.com/chinmaygarde/flutter_from_scratch.
 
-This fork, **FlutterPi-plugin-bridge**, adds a GTK-style Linux plugin bridge so unmodified Flutter Linux plugins can be built and registered.
-Flutter-pi also runs without X11, so you don't need to boot into Raspbian Desktop & have X11 and LXDE load up; just boot into the command-line.
+This fork, **flutter-drm-embedder**, adds a GTK-style Linux plugin bridge so unmodified Flutter Linux plugins can be built and registered.
+Flutter-drm-embedder also runs without X11, so you don't need to boot into Raspbian Desktop & have X11 and LXDE load up; just boot into the command-line.
 
-You can now **theoretically** run every flutter app you want using flutter-pi, including apps using packages & plugins, just that you'd have to build the platform side of the plugins you'd like to use yourself.
+You can now **theoretically** run every flutter app you want using flutter-drm-embedder, including apps using packages & plugins, just that you'd have to build the platform side of the plugins you'd like to use yourself.
 
 _The difference between packages and plugins is that packages don't include any native code, they are just pure Dart. Plugins (like the [shared_preferences plugin](https://github.com/flutter/plugins/tree/main/packages/shared_preferences)) include platform-specific code._
 
 ## 🖥️ Supported Platforms
-Although flutter-pi is only tested on a Rasberry Pi 4 2GB, it should work fine on other linux platforms, with the following conditions:
+Although flutter-drm-embedder is only tested on a Rasberry Pi 4 2GB, it should work fine on other linux platforms, with the following conditions:
 
 - support for hardware 3D acceleration. more precisely support for kernel-modesetting (KMS) and the direct rendering infrastructure (DRI) 
 - CPU architecture is one of ARMv7, ARMv8, x86 or x86 64bit.
 
-This means flutter-pi won't work on a Pi Zero (only the first one) or Pi 1.
+This means flutter-drm-embedder won't work on a Pi Zero (only the first one) or Pi 1.
 
 Known working boards:
 
 - Pi 2, 3 and 4 (even the 512MB models)
 - Pi Zero 2 (W)
 
-If you encounter issues running flutter-pi on any of the supported platforms listed above, please report them to me and I'll fix them.
+If you encounter issues running flutter-drm-embedder on any of the supported platforms listed above, please report them to me and I'll fix them.
 
 ## 📑 Contents
 
-1. **[Building flutter-pi on the Raspberry Pi](#-building-flutter-pi-on-the-raspberry-pi)**  
+1. **[Building flutter-drm-embedder on the Raspberry Pi](#-building-flutter-drm-embedder-on-the-raspberry-pi)**  
 1.1 [Dependencies](#dependencies)  
 1.2 [Compiling](#compiling)  
 1.3 [GTK plugin bridge (Linux plugins)](#gtk-plugin-bridge-linux-plugins)  
 2. **[Running your App on the Raspberry Pi](#-running-your-app-on-the-raspberry-pi)**  
 2.1 [Configuring your Raspberry Pi](#configuring-your-raspberry-pi)  
 2.2 [Building the App](#building-the-app-new-method-linux-only)  
-2.3 [Running your App with flutter-pi](#running-your-app-with-flutter-pi)  
+2.3 [Running your App with flutter-drm-embedder](#running-your-app-with-flutter-drm-embedder)  
 2.4 [gstreamer video player](#gstreamer-video-player)  
 2.5 [audioplayers](#audioplayers)
 3. **[Performance](#-performance)**  
@@ -45,8 +45,8 @@ If you encounter issues running flutter-pi on any of the supported platforms lis
 4. **[Useful Dart Packages](#-useful-dart-packages)**
 5. **[Discord](#-discord)**
 
-## 🛠 Building flutter-pi on the Raspberry Pi
-- If you want to update flutter-pi, you check out the latest commit using `git pull && git checkout origin/master` and continue with [compiling](#compiling), step 2.
+## 🛠 Building flutter-drm-embedder on the Raspberry Pi
+- If you want to update flutter-drm-embedder, you check out the latest commit using `git pull && git checkout origin/master` and continue with [compiling](#compiling), step 2.
 
 ### Dependencies
 
@@ -61,7 +61,7 @@ If you encounter issues running flutter-pi on any of the supported platforms lis
       <details>
       <summary>More Info</summary>
     
-      flutter-pi needs flutters `icudtl.dat` and `libflutter_engine.so.{debug,profile,release}` at runtime, depending on the runtime mode used.
+      flutter-drm-embedder needs flutters `icudtl.dat` and `libflutter_engine.so.{debug,profile,release}` at runtime, depending on the runtime mode used.
       You actually have two options here:
 
       - you build the engine yourself. takes a lot of time, and it most probably won't work on the first try. But once you have it set up, you have unlimited freedom on which engine version you want to use. You can find some rough guidelines [here](https://medium.com/flutter/flutter-on-raspberry-pi-mostly-from-scratch-2824c5e7dcb1).
@@ -84,11 +84,11 @@ If you encounter issues running flutter-pi on any of the supported platforms lis
     <details>
       <summary>More Info</summary>
       
-      - flutter-pi needs the mesa OpenGL ES and EGL implementation and libdrm & libgbm. It may work with non-mesa implementations too, but that's untested.
+      - flutter-drm-embedder needs the mesa OpenGL ES and EGL implementation and libdrm & libgbm. It may work with non-mesa implementations too, but that's untested.
       - The flutter engine depends on the _Arial_ font. Since that doesn't come included with Raspbian, you need to install it.
-      - `libsystemd` is not systemd, it's just an utility library. It provides the event loop and dbus support for flutter-pi.
+      - `libsystemd` is not systemd, it's just an utility library. It provides the event loop and dbus support for flutter-drm-embedder.
       - `libinput-dev`, `libudev-dev` and `libxkbcommon-dev` are needed for (touch, mouse, raw keyboard and text) input support.
-      - `libudev-dev` is required, but actual udev is not. Flutter-pi will just open all `event` devices inside `/dev/input` (unless overwritten using `-i`) if udev is not present.
+      - `libudev-dev` is required, but actual udev is not. Flutter-drm-embedder will just open all `event` devices inside `/dev/input` (unless overwritten using `-i`) if udev is not present.
       - `gpiod` and `libgpiod-dev` where required in the past, but aren't anymore since the `flutter_gpiod` plugin will directly access the kernel interface.
     </details>
     
@@ -98,10 +98,10 @@ If you encounter issues running flutter-pi on any of the supported platforms lis
     ```
 
 ### Compiling
-1. Clone flutter-pi and cd into the cloned directory:
+1. Clone flutter-drm-embedder and cd into the cloned directory:
     ```bash
-    git clone --recursive https://github.com/ardera/flutter-pi
-    cd flutter-pi
+    git clone --recursive https://github.com/ardera/flutter-drm-embedder
+    cd flutter-drm-embedder
     ```
 2. Compile:
     ```bash
@@ -151,7 +151,7 @@ If you encounter issues running flutter-pi on any of the supported platforms lis
 
 5. Leave `raspi-config`.
 
-6. Give the `pi` permission to use 3D acceleration. (**NOTE:** potential security hazard. If you don't want to do this, launch `flutter-pi` using `sudo` instead.)
+6. Give the `pi` permission to use 3D acceleration. (**NOTE:** potential security hazard. If you don't want to do this, launch `flutter-drm-embedder` using `sudo` instead.)
     ```bash
     usermod -a -G render pi
     ```
@@ -161,7 +161,7 @@ If you encounter issues running flutter-pi on any of the supported platforms lis
 <details>
   <summary>More information</summary>
   
-  - flutter-pi requires that no other process, like a X11- or wayland-server, is using the video output. So to disable the desktop environment, we boot into console instead.
+  - flutter-drm-embedder requires that no other process, like a X11- or wayland-server, is using the video output. So to disable the desktop environment, we boot into console instead.
   - The old broadcom-proprietary GL driver was bugged and not working with flutter, so we have to use the Fake KMS driver.
   - Actually, you can also configure 16MB of GPU memory if you want to. 64MB are needed when you want to use the [`omxplayer_video_player`](https://pub.dev/packages/omxplayer_video_player) plugin.
   - `pi` isn't allowed to directly access the GPU because IIRC this has some privilege escalation bugs. Raspberry Pi has quite a lot of system-critical, not graphics-related stuff running on the GPU. I read somewhere it's easily possible to gain control of the GPU by writing malicious shaders. From there you can gain control of the CPU and thus the linux kernel. So basically the `pi` user could escalate privileges and become `root` just by directly accessing the GPU. But maybe this has already been fixed, I'm not sure.
@@ -209,7 +209,7 @@ rsync -a ./build/flutter_assets/ pi@raspberrypi:/home/pi/flutter_gallery/
 
 2. On Raspberry Pi, run `sudo apt-get install xdg-user-dirs` to install the runtime requirement of flutter_gallery. (otherwise it may [throw exception](https://github.com/flutter/gallery/issues/979#issuecomment-1693361972))
 
-3. Done. You can now run this app in release mode using `flutter-pi --release /home/pi/flutter_gallery`.
+3. Done. You can now run this app in release mode using `flutter-drm-embedder --release /home/pi/flutter_gallery`.
 
 ### Building the App (old method, linux or windows)
 
@@ -248,7 +248,7 @@ git checkout d77920b4ced4a105ad35659fbe3958800d418fb9
 flutter build bundle
 rsync -a ./build/flutter_assets/ pi@raspberrypi:/home/pi/flutter_gallery/
 ```
-3. Done. You can now run this app in debug-mode using `flutter-pi /home/pi/flutter_gallery`.
+3. Done. You can now run this app in debug-mode using `flutter-drm-embedder /home/pi/flutter_gallery`.
 
 <details>
   <summary>More information</summary>
@@ -309,7 +309,7 @@ rsync -a ./build/flutter_assets/ pi@raspberrypi:/home/pi/flutter_gallery/
     ```
     scp -r ./build/flutter_assets/ pi@raspberrypi:/home/pi/my_app
     ```
-10. You can now launch the app in release mode using `flutter-pi --release /home/pi/my_app`
+10. You can now launch the app in release mode using `flutter-drm-embedder --release /home/pi/my_app`
 
 #### Complete example on Windows
 1. We'll build the asset bundle for `flutter_gallery` and deploy it using `rsync` in this example.
@@ -342,17 +342,17 @@ rsync -a ./build/flutter_assets/ pi@raspberrypi:/home/pi/flutter_gallery/
     rsync -a --info=progress2 ./build/flutter_assets/ pi@raspberrypi:/home/pi/flutter_gallery/
     exit
     ```
-3. Done. You can now run this app in release mode using `flutter-pi --release /home/pi/flutter_gallery`.
+3. Done. You can now run this app in release mode using `flutter-drm-embedder --release /home/pi/flutter_gallery`.
 
 </details>
 
-### Running your App with flutter-pi
+### Running your App with flutter-drm-embedder
 ```txt
-pi@hpi4:~ $ flutter-pi --help
-flutter-pi - run flutter apps on your Raspberry Pi.
+pi@hpi4:~ $ flutter-drm-embedder --help
+flutter-drm-embedder - run flutter apps on your Raspberry Pi.
 
 USAGE:
-  flutter-pi [options] <bundle path> [flutter engine options]
+  flutter-drm-embedder [options] <bundle path> [flutter engine options]
 
 OPTIONS:
   --release                  Run the app in release mode. The AOT snapshot
@@ -407,17 +407,17 @@ OPTIONS:
   -h, --help                 Show this help and exit.
 
 EXAMPLES:
-  flutter-pi ~/hello_world_app
-  flutter-pi --release ~/hello_world_app
-  flutter-pi -o portrait_up ./my_app
-  flutter-pi -r 90 ./my_app
-  flutter-pi -d "155, 86" ./my_app
-  flutter-pi --videomode 1920x1080 ./my_app
-  flutter-pi --videomode 1280x720@60 ./my_app
+  flutter-drm-embedder ~/hello_world_app
+  flutter-drm-embedder --release ~/hello_world_app
+  flutter-drm-embedder -o portrait_up ./my_app
+  flutter-drm-embedder -r 90 ./my_app
+  flutter-drm-embedder -d "155, 86" ./my_app
+  flutter-drm-embedder --videomode 1920x1080 ./my_app
+  flutter-drm-embedder --videomode 1280x720@60 ./my_app
 
 SEE ALSO:
   Author:  Hannes Winkler, a.k.a ardera
-  Source:  https://github.com/ardera/flutter-pi
+  Source:  https://github.com/ardera/flutter-drm-embedder
   License: MIT
 
   For instructions on how to build an asset bundle or an AOT snapshot
@@ -434,14 +434,14 @@ of the flutter app you're trying to run.
 ### gstreamer video player
 Gstreamer video player is a newer video player based on gstreamer.
 
-To use the gstreamer video player, just rebuild flutter-pi (delete your build folder and reconfigure) and make sure the necessary gstreamer packages are installed. (See [dependencies](#dependencies))
+To use the gstreamer video player, just rebuild flutter-drm-embedder (delete your build folder and reconfigure) and make sure the necessary gstreamer packages are installed. (See [dependencies](#dependencies))
 
 And then, just use the stuff in the official [video_player](https://pub.dev/packages/video_player) package. (`VideoPlayer`, `VideoPlayerController`, etc, there's nothing specific you need to do on the dart-side)
 
 ### audioplayers
-As of current moment flutter-pi implements plugin for `audioplayers: ^5.0.0`.
+As of current moment flutter-drm-embedder implements plugin for `audioplayers: ^5.0.0`.
 There are several things you need to keep in mind:
-- As flutter-pi is intended for use on constrained systems like raspberry pi, you should avoid creating multiple temporary instances and instead prefer to use one global instance of `AudioPlayer`. There is limit you can easily hit if you're going to spam multiple instances of `AudioPlayer`
+- As flutter-drm-embedder is intended for use on constrained systems like raspberry pi, you should avoid creating multiple temporary instances and instead prefer to use one global instance of `AudioPlayer`. There is limit you can easily hit if you're going to spam multiple instances of `AudioPlayer`
 - Plugin was tested to work with ALSA and `pulseaudio` might prevent the plugin from playing audio correctly:
     - Hence please make sure you delete `pulseaudio` package from your system.
     - Make sure you have `gstreamer1.0-alsa` package installed in addition to packages needed for gstreamer video player.
@@ -463,14 +463,14 @@ This is why I created my own (userspace) touchscreen driver, for improved latenc
 
 | Package | Category    | Author | Description |
 | - | - | - | - |
-| flutterpi_tool ([package](https://pub.dev/packages/flutterpi_tool/)) ([repo](https://github.com/ardera/flutterpi_tool)) | 🔧 tooling | Hannes Winkler (me) | Tool to make developing & distributing apps for flutter-pi easier. |
+| flutterpi_tool ([package](https://pub.dev/packages/flutterpi_tool/)) ([repo](https://github.com/ardera/flutterpi_tool)) | 🔧 tooling | Hannes Winkler (me) | Tool to make developing & distributing apps for flutter-drm-embedder easier. |
 | flutter_gpiod ([package](https://pub.dev/packages/flutter_gpiod/)) ([repo](https://github.com/ardera/flutter_packages/tree/main/packages/flutter_gpiod)) | 🖨 peripherals | Hannes Winkler | GPIO control support for dart/flutter, uses kernel interfaces directly for more performance. |
 | linux_serial ([package](https://pub.dev/packages/linux_serial/)) ([repo](https://github.com/ardera/flutter_packages/tree/main/packages/linux_serial)) | 🖨 peripherals | Hannes Winkler | Serial Port support for dart/flutter, uses kernel interfaces directly for more performance. |
 | linux_spidev ([package](https://pub.dev/packages/linux_spidev/)) ([repo](https://github.com/ardera/flutter_packages/tree/main/packages/linux_spidev)) | 🖨 peripherals | Hannes Winkler | SPI bus support for dart/flutter, uses kernel interfaces directly for more performance. |
 | dart_periphery ([package](https://pub.dev/packages/dart_periphery)) ([repo](https://github.com/pezi/dart_periphery)) | 🖨 peripherals | [Peter Sauer](https://github.com/pezi/) | All-in-one package GPIO, I2C, SPI, Serial, PWM, Led, MMIO support using c-periphery. |
-| flutterpi_gstreamer_video_player ([package](https://pub.dev/packages/flutterpi_gstreamer_video_player)) ([repo](https://github.com/ardera/flutter_packages/tree/main/packages/flutterpi_gstreamer_video_player)) | ⏯️ multimedia | Hannes Winkler | Official video player implementation for flutter-pi. See [GStreamer video player](#gstreamer-video-player) section above. |
+| flutterpi_gstreamer_video_player ([package](https://pub.dev/packages/flutterpi_gstreamer_video_player)) ([repo](https://github.com/ardera/flutter_packages/tree/main/packages/flutterpi_gstreamer_video_player)) | ⏯️ multimedia | Hannes Winkler | Official video player implementation for flutter-drm-embedder. See [GStreamer video player](#gstreamer-video-player) section above. |
 | charset_converter ([package](https://pub.dev/packages/charset_converter)) ([repo](https://github.com/pr0gramista/charset_converter)) | 🗚 encoding | Bartosz Wiśniewski | Encode and decode charsets using platform built-in converter. |
-| sentry_flutter ([package](https://pub.dev/packages/sentry_flutter)) ([repo](https://github.com/getsentry/sentry-dart))|  📊 Monitoring | sentry.io | See https://github.com/ardera/flutter-pi/wiki/Sentry-Support for instructions. |
+| sentry_flutter ([package](https://pub.dev/packages/sentry_flutter)) ([repo](https://github.com/getsentry/sentry-dart))|  📊 Monitoring | sentry.io | See https://github.com/ardera/flutter-drm-embedder/wiki/Sentry-Support for instructions. |
 
 ## 💬 Discord
-There a `#custom-embedders` channel on the [flutter discord](https://github.com/flutter/flutter/wiki/Chat) which you can use if you have any questions regarding flutter-pi or generally, anything related to embedding the engine for which you don't want to open issue about or write an email.
+There a `#custom-embedders` channel on the [flutter discord](https://github.com/flutter/flutter/wiki/Chat) which you can use if you have any questions regarding flutter-drm-embedder or generally, anything related to embedding the engine for which you don't want to open issue about or write an email.

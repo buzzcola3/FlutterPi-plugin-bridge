@@ -1,11 +1,11 @@
-# Getting Started with flutter-pi
+# Getting Started with flutter-drm-embedder
 
 These instructions summarize the information in the [README.md](README.md) file. See that file for more details.
 In each step below with Bash commands, the commands start with a set of `export` commands that you should update appropriately.
 
 1. Build a Raspberry Pi with a touchscreen. This will be your target.
 
-2. Prepare your target for flutter-pi (see "Configuring your Raspberry Pi" in the README for details):
+2. Prepare your target for flutter-drm-embedder (see "Configuring your Raspberry Pi" in the README for details):
    ```bash
    export APPNAME=hello_pi # change this to the name of your application
    
@@ -20,8 +20,8 @@ In each step below with Bash commands, the commands start with a set of `export`
    pushd ~/dev
    git clone --depth 1 https://github.com/ardera/flutter-engine-binaries-for-arm engine-binaries
    sudo ./engine-binaries/install.sh
-   git clone https://github.com/ardera/flutter-pi.git
-   cd flutter-pi
+   git clone https://github.com/ardera/flutter-drm-embedder.git
+   cd flutter-drm-embedder
    mkdir build && cd build
    cmake ..
    make -j`nproc`
@@ -78,8 +78,8 @@ In each step below with Bash commands, the commands start with a set of `export`
    # upload the application
    rsync --recursive ~/dev/$APPNAME/build/flutter_assets/ $TARGETUSER@$TARGET:dev/$APPNAME
    # run the application
-   ssh $TARGETUSER@$TARGET "killall" "flutter-pi"	
-   ssh $TARGETUSER@$TARGET "dev/flutter-pi/build/flutter-pi" "--release" "~/dev/$APPNAME"
+   ssh $TARGETUSER@$TARGET "killall" "flutter-drm-embedder"	
+   ssh $TARGETUSER@$TARGET "dev/flutter-drm-embedder/build/flutter-drm-embedder" "--release" "~/dev/$APPNAME"
    popd
    ```
 

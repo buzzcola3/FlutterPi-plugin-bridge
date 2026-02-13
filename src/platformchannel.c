@@ -11,7 +11,7 @@
 
 #include <flutter_embedder.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #define JSMN_STATIC
 #include "jsmn.h"
 #include "util/asserts.h"
@@ -1200,20 +1200,20 @@ int platch_send(
         handlerdata->on_response = on_response;
         handlerdata->userdata = userdata;
 
-        response_handle = flutterpi_create_platform_message_response_handle(flutterpi, platch_on_response_internal, handlerdata);
+        response_handle = flutter_drm_embedder_create_platform_message_response_handle(flutter_drm_embedder, platch_on_response_internal, handlerdata);
         if (response_handle == NULL) {
             goto fail_free_handlerdata;
         }
     }
 
-    ok = flutterpi_send_platform_message(flutterpi, channel, buffer, size, response_handle);
+    ok = flutter_drm_embedder_send_platform_message(flutter_drm_embedder, channel, buffer, size, response_handle);
     if (ok != 0) {
         goto fail_release_handle;
     }
 
     /// TODO: This won't work if we're not on the main thread
     if (on_response) {
-        flutterpi_release_platform_message_response_handle(flutterpi, response_handle);
+        flutter_drm_embedder_release_platform_message_response_handle(flutter_drm_embedder, response_handle);
     }
 
     if (object->codec != kBinaryCodec) {
@@ -1224,7 +1224,7 @@ int platch_send(
 
 fail_release_handle:
     if (on_response) {
-        flutterpi_release_platform_message_response_handle(flutterpi, response_handle);
+        flutter_drm_embedder_release_platform_message_response_handle(flutter_drm_embedder, response_handle);
     }
 
 fail_free_handlerdata:
@@ -1260,7 +1260,7 @@ int platch_respond(const FlutterPlatformMessageResponseHandle *handle, struct pl
     if (ok != 0)
         return ok;
 
-    ok = flutterpi_respond_to_platform_message(handle, buffer, size);
+    ok = flutter_drm_embedder_respond_to_platform_message(handle, buffer, size);
 
     if (buffer != NULL) {
         free(buffer);

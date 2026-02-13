@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "fl_binary_messenger_internal.h"
-#include "flutterpi_shim.h"
+#include "flutter_drm_embedder_shim.h"
 #include "platformchannel.h"
 #include "pluginregistry.h"
 
@@ -18,7 +18,7 @@ typedef struct {
 } FlBinaryMessengerHandler;
 
 typedef struct {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     FlutterPlatformMessageResponseHandle *handle;
     GTask *task;
 } FlBinaryMessengerPendingResponse;
@@ -36,7 +36,7 @@ G_DEFINE_TYPE(FlBinaryMessengerResponseHandle, fl_binary_messenger_response_hand
 
 struct _FlBinaryMessenger {
     GObject parent_instance;
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     struct plugin_registry *plugin_registry;
     GHashTable *handlers;
 };
@@ -110,10 +110,10 @@ static void on_platform_message(void *userdata, const FlutterPlatformMessage *me
     g_object_unref(response_handle);
 }
 
-FlBinaryMessenger *fl_binary_messenger_new_for_flutterpi(struct flutterpi *flutterpi) {
+FlBinaryMessenger *fl_binary_messenger_new_for_flutter_drm_embedder(struct flutter_drm_embedder *flutter_drm_embedder) {
     FlBinaryMessenger *messenger = g_object_new(FL_TYPE_BINARY_MESSENGER, NULL);
-    messenger->flutterpi = flutterpi;
-    messenger->plugin_registry = flutterpi_get_plugin_registry(flutterpi);
+    messenger->flutter_drm_embedder = flutter_drm_embedder;
+    messenger->plugin_registry = flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder);
     return messenger;
 }
 
@@ -160,7 +160,7 @@ static void fl_binary_messenger_on_response(const uint8_t *data, size_t data_siz
     g_task_return_pointer(pending->task, bytes, (GDestroyNotify) g_bytes_unref);
 
     if (pending->handle) {
-        flutterpi_release_platform_message_response_handle(pending->flutterpi, pending->handle);
+        flutter_drm_embedder_release_platform_message_response_handle(pending->flutter_drm_embedder, pending->handle);
     }
 
     g_object_unref(pending->task);
@@ -179,11 +179,11 @@ void fl_binary_messenger_send_on_channel(FlBinaryMessenger *messenger,
     GTask *task = g_task_new(messenger, cancellable, callback, user_data);
 
     FlBinaryMessengerPendingResponse *pending = g_new0(FlBinaryMessengerPendingResponse, 1);
-    pending->flutterpi = messenger->flutterpi;
+    pending->flutter_drm_embedder = messenger->flutter_drm_embedder;
     pending->task = task;
 
-    FlutterPlatformMessageResponseHandle *response_handle = flutterpi_create_platform_message_response_handle(
-        messenger->flutterpi,
+    FlutterPlatformMessageResponseHandle *response_handle = flutter_drm_embedder_create_platform_message_response_handle(
+        messenger->flutter_drm_embedder,
         fl_binary_messenger_on_response,
         pending
     );
@@ -203,10 +203,10 @@ void fl_binary_messenger_send_on_channel(FlBinaryMessenger *messenger,
         data = g_bytes_get_data(message, &size);
     }
 
-    int ok = flutterpi_send_platform_message(messenger->flutterpi, channel, data, size, response_handle);
+    int ok = flutter_drm_embedder_send_platform_message(messenger->flutter_drm_embedder, channel, data, size, response_handle);
     if (ok != 0) {
         g_task_return_new_error(task, G_IO_ERROR, G_IO_ERROR_FAILED, "Failed to send platform message");
-        flutterpi_release_platform_message_response_handle(messenger->flutterpi, response_handle);
+        flutter_drm_embedder_release_platform_message_response_handle(messenger->flutter_drm_embedder, response_handle);
         g_object_unref(task);
         g_free(pending);
     }
@@ -230,7 +230,7 @@ void fl_binary_messenger_send_response(FlBinaryMessenger *messenger,
         data = g_bytes_get_data(response, &size);
     }
 
-    int ok = flutterpi_respond_to_platform_message(response_handle->handle, data, size);
+    int ok = flutter_drm_embedder_respond_to_platform_message(response_handle->handle, data, size);
     if (ok != 0) {
         g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED, "Failed to send platform response");
     }
@@ -246,5 +246,5 @@ void fl_binary_messenger_send_on_channel_no_response(FlBinaryMessenger *messenge
         data = g_bytes_get_data(message, &size);
     }
 
-    flutterpi_send_platform_message(messenger->flutterpi, channel, data, size, NULL);
+    flutter_drm_embedder_send_platform_message(messenger->flutter_drm_embedder, channel, data, size, NULL);
 }

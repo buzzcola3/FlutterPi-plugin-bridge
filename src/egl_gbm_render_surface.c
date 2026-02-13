@@ -703,7 +703,7 @@ static int egl_gbm_render_surface_queue_present(struct render_surface *s, const 
     /// FIXME: This sometimes (rarely) fails with EGL surface backing stores.
     ///   See below:
     ///
-    ///   pi@hpi4:~ $ LD_LIBRARY_PATH=~/mesa-install/lib/arm-linux-gnueabihf/ LIBGL_DRIVERS_PATH=~/mesa-install/lib/arm-linux-gnueabihf/dri/ ~/devel/flutterpi-install/bin/flutter-pi ~/devel/flutterpi_platform_view_test_debug/ --vm-service-host=192.168.178.11
+    ///   pi@hpi4:~ $ LD_LIBRARY_PATH=~/mesa-install/lib/arm-linux-gnueabihf/ LIBGL_DRIVERS_PATH=~/mesa-install/lib/arm-linux-gnueabihf/dri/ ~/devel/flutter_drm_embedder-install/bin/flutter-drm-embedder ~/devel/flutter_drm_embedder_platform_view_test_debug/ --vm-service-host=192.168.178.11
     ///   ==============Locale==============
     ///   Flutter locale:
     ///     default: de_DE
@@ -752,7 +752,7 @@ static int egl_gbm_render_surface_queue_present(struct render_surface *s, const 
     ///   egl_gbm_render_surface.c: egl_gbm_render_surface_present_kms:
     ///       src_x, src_y, src_w, src_h: 0 0 800 480
     ///       dst_x, dst_y, dst_w, dst_h: 0,000000 0,000000 800,000000 480,000000
-    ///   flutter-pi: egl_gbm_render_surface.c:641: int egl_gbm_render_surface_queue_present(struct render_surface *, const FlutterBackingStore *): Zusicherung »(0) && ("Couldn't find a free slot to lock the surfaces front framebuffer.")« nicht erfüllt.
+    ///   flutter-drm-embedder: egl_gbm_render_surface.c:641: int egl_gbm_render_surface_queue_present(struct render_surface *, const FlutterBackingStore *): Zusicherung »(0) && ("Couldn't find a free slot to lock the surfaces front framebuffer.")« nicht erfüllt.
 
     ASSERT_MSG(false, "Couldn't find a free slot to lock the surfaces front framebuffer.");
     ok = EIO;
@@ -793,7 +793,7 @@ ATTR_PURE EGLSurface egl_gbm_render_surface_get_egl_surface(struct egl_gbm_rende
  *
  * If the display doesn't support EGL_KHR_no_config_context, we need to create the EGL rendering context with
  * the same EGLConfig as every EGLSurface we want to bind to it. So we can just let egl_gbm_render_surface choose a config
- * and let flutter-pi query that config when creating the rendering contexts in that case.
+ * and let flutter-drm-embedder query that config when creating the rendering contexts in that case.
  *
  * @param s
  * @return EGLConfig The chosen EGLConfig. Valid forever.

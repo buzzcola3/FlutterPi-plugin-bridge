@@ -7,8 +7,8 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_DUMMY_RENDER_SURFACE_H
-#define _FLUTTERPI_SRC_DUMMY_RENDER_SURFACE_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_DUMMY_RENDER_SURFACE_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_DUMMY_RENDER_SURFACE_H
 
 #include "util/geometry.h"
 
@@ -25,4 +25,4 @@ ATTR_PURE struct dummy_render_surface *__checked_cast_dummy_render_surface(void 
 
 struct dummy_render_surface *dummy_render_surface_new(struct tracer *tracer, struct vec2i size);
 
-#endif  // _FLUTTERPI_SRC_DUMMY_RENDER_SURFACE_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_DUMMY_RENDER_SURFACE_H

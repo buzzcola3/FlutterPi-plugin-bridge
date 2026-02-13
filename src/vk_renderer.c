@@ -249,9 +249,9 @@ MUST_CHECK struct vk_renderer *vk_renderer_new() {
             .pApplicationInfo =
                 &(VkApplicationInfo){
                     .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-                    .pApplicationName = "flutter-pi",
+                    .pApplicationName = "flutter-drm-embedder",
                     .applicationVersion = VK_MAKE_VERSION(1, 0, 0),
-                    .pEngineName = "flutter-pi",
+                    .pEngineName = "flutter-drm-embedder",
                     .engineVersion = VK_MAKE_VERSION(1, 0, 0),
                     .apiVersion = VK_MAKE_VERSION(1, 1, 0),
                     .pNext = NULL,

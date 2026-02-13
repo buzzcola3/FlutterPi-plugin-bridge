@@ -5,8 +5,8 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_UTIL_UUID_H
-#define _FLUTTERPI_SRC_UTIL_UUID_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_UTIL_UUID_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_UTIL_UUID_H
 
 #include <stdint.h>
 #include <string.h>
@@ -33,4 +33,4 @@ static inline void uuid_copy(uuid_t *dst, const uuid_t src) {
     memcpy(dst, &src, sizeof(uuid_t));
 }
 
-#endif  // _FLUTTERPI_SRC_UTIL_UUID_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_UTIL_UUID_H

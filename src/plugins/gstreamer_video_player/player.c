@@ -15,7 +15,7 @@
 #include <gst/video/gstvideometa.h>
 #include <sys/eventfd.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "notifier_listener.h"
 #include "platformchannel.h"
 #include "pluginregistry.h"
@@ -72,7 +72,7 @@ enum playback_direction { kForward, kBackward };
 struct gstplayer {
     pthread_mutex_t lock;
 
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     void *userdata;
 
     char *video_uri;
@@ -174,15 +174,15 @@ UNUSED static inline void unlock(struct gstplayer *player) {
 }
 
 UNUSED static inline void trace_instant(struct gstplayer *player, const char *name) {
-    return flutterpi_trace_event_instant(player->flutterpi, name);
+    return flutter_drm_embedder_trace_event_instant(player->flutter_drm_embedder, name);
 }
 
 UNUSED static inline void trace_begin(struct gstplayer *player, const char *name) {
-    return flutterpi_trace_event_begin(player->flutterpi, name);
+    return flutter_drm_embedder_trace_event_begin(player->flutter_drm_embedder, name);
 }
 
 UNUSED static inline void trace_end(struct gstplayer *player, const char *name) {
-    return flutterpi_trace_event_end(player->flutterpi, name);
+    return flutter_drm_embedder_trace_event_end(player->flutter_drm_embedder, name);
 }
 
 static int maybe_send_info(struct gstplayer *player) {
@@ -956,7 +956,7 @@ static int init(struct gstplayer *player, bool force_sw_decoders) {
 
     gst_bus_get_pollfd(bus, &fd);
 
-    flutterpi_sd_event_add_io(&busfd_event_source, fd.fd, EPOLLIN, on_bus_fd_ready, player);
+    flutter_drm_embedder_sd_event_add_io(&busfd_event_source, fd.fd, EPOLLIN, on_bus_fd_ready, player);
 
     LOG_DEBUG("Setting state to paused...\n");
     state_change_return = gst_element_set_state(GST_ELEMENT(pipeline), GST_STATE_PAUSED);
@@ -1009,7 +1009,7 @@ static void maybe_deinit(struct gstplayer *player) {
 
 DEFINE_LOCK_OPS(gstplayer, lock)
 
-static struct gstplayer *gstplayer_new(struct flutterpi *flutterpi, const char *uri, const char *pipeline_descr, void *userdata) {
+static struct gstplayer *gstplayer_new(struct flutter_drm_embedder *flutter_drm_embedder, const char *uri, const char *pipeline_descr, void *userdata) {
     struct frame_interface *frame_interface;
     struct gstplayer *player;
     struct texture *texture;
@@ -1018,18 +1018,18 @@ static struct gstplayer *gstplayer_new(struct flutterpi *flutterpi, const char *
     char *uri_owned, *pipeline_descr_owned;
     int ok;
 
-    ASSERT_NOT_NULL(flutterpi);
+    ASSERT_NOT_NULL(flutter_drm_embedder);
     assert((uri != NULL) != (pipeline_descr != NULL));
 
     player = malloc(sizeof *player);
     if (player == NULL)
         return NULL;
 
-    texture = flutterpi_create_texture(flutterpi);
+    texture = flutter_drm_embedder_create_texture(flutter_drm_embedder);
     if (texture == NULL)
         goto fail_free_player;
 
-    frame_interface = frame_interface_new(flutterpi_get_gl_renderer(flutterpi));
+    frame_interface = frame_interface_new(flutter_drm_embedder_get_gl_renderer(flutter_drm_embedder));
     if (frame_interface == NULL)
         goto fail_destroy_texture;
 
@@ -1069,7 +1069,7 @@ static struct gstplayer *gstplayer_new(struct flutterpi *flutterpi, const char *
     if (ok != 0)
         goto fail_deinit_buffering_state_notifier;
 
-    player->flutterpi = flutterpi;
+    player->flutter_drm_embedder = flutter_drm_embedder;
     player->userdata = userdata;
     player->video_uri = uri_owned;
     player->pipeline_description = pipeline_descr_owned;
@@ -1128,40 +1128,40 @@ fail_free_player:
     return NULL;
 }
 
-struct gstplayer *gstplayer_new_from_asset(struct flutterpi *flutterpi, const char *asset_path, const char *package_name, void *userdata) {
+struct gstplayer *gstplayer_new_from_asset(struct flutter_drm_embedder *flutter_drm_embedder, const char *asset_path, const char *package_name, void *userdata) {
     struct gstplayer *player;
     char *uri;
     int ok;
 
     (void) package_name;
 
-    ok = asprintf(&uri, "file://%s/%s", flutterpi_get_asset_bundle_path(flutterpi), asset_path);
+    ok = asprintf(&uri, "file://%s/%s", flutter_drm_embedder_get_asset_bundle_path(flutter_drm_embedder), asset_path);
     if (ok < 0) {
         return NULL;
     }
 
-    player = gstplayer_new(flutterpi, uri, NULL, userdata);
+    player = gstplayer_new(flutter_drm_embedder, uri, NULL, userdata);
 
     free(uri);
 
     return player;
 }
 
-struct gstplayer *gstplayer_new_from_network(struct flutterpi *flutterpi, const char *uri, enum format_hint format_hint, void *userdata) {
+struct gstplayer *gstplayer_new_from_network(struct flutter_drm_embedder *flutter_drm_embedder, const char *uri, enum format_hint format_hint, void *userdata) {
     (void) format_hint;
-    return gstplayer_new(flutterpi, uri, NULL, userdata);
+    return gstplayer_new(flutter_drm_embedder, uri, NULL, userdata);
 }
 
-struct gstplayer *gstplayer_new_from_file(struct flutterpi *flutterpi, const char *uri, void *userdata) {
-    return gstplayer_new(flutterpi, uri, NULL, userdata);
+struct gstplayer *gstplayer_new_from_file(struct flutter_drm_embedder *flutter_drm_embedder, const char *uri, void *userdata) {
+    return gstplayer_new(flutter_drm_embedder, uri, NULL, userdata);
 }
 
-struct gstplayer *gstplayer_new_from_content_uri(struct flutterpi *flutterpi, const char *uri, void *userdata) {
-    return gstplayer_new(flutterpi, uri, NULL, userdata);
+struct gstplayer *gstplayer_new_from_content_uri(struct flutter_drm_embedder *flutter_drm_embedder, const char *uri, void *userdata) {
+    return gstplayer_new(flutter_drm_embedder, uri, NULL, userdata);
 }
 
-struct gstplayer *gstplayer_new_from_pipeline(struct flutterpi *flutterpi, const char *pipeline, void *userdata) {
-    return gstplayer_new(flutterpi, NULL, pipeline, userdata);
+struct gstplayer *gstplayer_new_from_pipeline(struct flutter_drm_embedder *flutter_drm_embedder, const char *pipeline, void *userdata) {
+    return gstplayer_new(flutter_drm_embedder, NULL, pipeline, userdata);
 }
 
 void gstplayer_destroy(struct gstplayer *player) {

@@ -1,5 +1,5 @@
 #include "plugins/charset_converter.h"
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "pluginregistry.h"
 #include "util/logging.h"
 #include <iconv.h>
@@ -225,8 +225,8 @@ static int on_receive(char *channel, struct platch_obj *object, FlutterPlatformM
     return platch_respond_not_implemented(response_handle);
 }
 
-enum plugin_init_result charset_converter_init(struct flutterpi *flutterpi, void **userdata_out) {
-    (void) flutterpi;
+enum plugin_init_result charset_converter_init(struct flutter_drm_embedder *flutter_drm_embedder, void **userdata_out) {
+    (void) flutter_drm_embedder;
 
     int ok;
 
@@ -240,10 +240,10 @@ enum plugin_init_result charset_converter_init(struct flutterpi *flutterpi, void
     return PLUGIN_INIT_RESULT_INITIALIZED;
 }
 
-void charset_converter_deinit(struct flutterpi *flutterpi, void *userdata) {
+void charset_converter_deinit(struct flutter_drm_embedder *flutter_drm_embedder, void *userdata) {
     (void) userdata;
 
-    plugin_registry_remove_receiver_v2_locked(flutterpi_get_plugin_registry(flutterpi), CHARSET_CONVERTER_CHANNEL);
+    plugin_registry_remove_receiver_v2_locked(flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder), CHARSET_CONVERTER_CHANNEL);
 }
 
-FLUTTERPI_PLUGIN("charset converter plugin", charset_converter_plugin, charset_converter_init, charset_converter_deinit)
+FLUTTER_DRM_EMBEDDER_PLUGIN("charset converter plugin", charset_converter_plugin, charset_converter_init, charset_converter_deinit)

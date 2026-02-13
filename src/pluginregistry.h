@@ -7,8 +7,8 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_PLUGINREGISTRY_H
-#define _FLUTTERPI_SRC_PLUGINREGISTRY_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_PLUGINREGISTRY_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_PLUGINREGISTRY_H
 
 #include <string.h>
 
@@ -17,14 +17,14 @@
 
 #include "platformchannel.h"
 
-struct flutterpi;
+struct flutter_drm_embedder;
 struct plugin_registry;
 
-typedef enum plugin_init_result (*plugin_init_t)(struct flutterpi *flutterpi, void **userdata_out);
+typedef enum plugin_init_result (*plugin_init_t)(struct flutter_drm_embedder *flutter_drm_embedder, void **userdata_out);
 
-typedef void (*plugin_deinit_t)(struct flutterpi *flutterpi, void *userdata);
+typedef void (*plugin_deinit_t)(struct flutter_drm_embedder *flutter_drm_embedder, void *userdata);
 
-struct flutterpi_plugin_v2 {
+struct flutter_drm_embedder_plugin_v2 {
     const char *name;
     plugin_init_t init;
     plugin_deinit_t deinit;
@@ -33,11 +33,11 @@ struct flutterpi_plugin_v2 {
 /// The return value of a plugin initializer function.
 enum plugin_init_result {
     PLUGIN_INIT_RESULT_INITIALIZED,  ///< The plugin was successfully initialized.
-    PLUGIN_INIT_RESULT_NOT_APPLICABLE,  ///< The plugin couldn't be initialized, because it's not compatible with the flutter-pi instance.
-    ///  For example, the plugin requires OpenGL but flutter-pi is using software rendering.
-    ///  This is not an error, and flutter-pi will continue initializing the other plugins.
+    PLUGIN_INIT_RESULT_NOT_APPLICABLE,  ///< The plugin couldn't be initialized, because it's not compatible with the flutter-drm-embedder instance.
+    ///  For example, the plugin requires OpenGL but flutter-drm-embedder is using software rendering.
+    ///  This is not an error, and flutter-drm-embedder will continue initializing the other plugins.
     PLUGIN_INIT_RESULT_ERROR  ///< The plugin couldn't be initialized because an unexpected error ocurred.
-    ///  Flutter-pi may decide to abort the startup phase of the whole flutter-pi instance at that point.
+    ///  Flutter-drm-embedder may decide to abort the startup phase of the whole flutter-drm-embedder instance at that point.
 };
 
 struct _FlutterPlatformMessageResponseHandle;
@@ -57,11 +57,11 @@ typedef void (*platform_message_callback_v2_t)(void *userdata, const FlutterPlat
 /**
  * @brief Create a new plugin registry instance and add the hardcoded plugins, but don't initialize them yet.
  */
-struct plugin_registry *plugin_registry_new(struct flutterpi *flutterpi);
+struct plugin_registry *plugin_registry_new(struct flutter_drm_embedder *flutter_drm_embedder);
 
 void plugin_registry_destroy(struct plugin_registry *registry);
 
-void plugin_registry_add_plugin(struct plugin_registry *registry, const struct flutterpi_plugin_v2 *plugin);
+void plugin_registry_add_plugin(struct plugin_registry *registry, const struct flutter_drm_embedder_plugin_v2 *plugin);
 
 int plugin_registry_add_plugins_from_static_registry(struct plugin_registry *registry);
 
@@ -76,7 +76,7 @@ int plugin_registry_ensure_plugins_initialized(struct plugin_registry *registry)
 void plugin_registry_ensure_plugins_deinitialized(struct plugin_registry *registry);
 
 /**
- * @brief Called by flutter-pi when a platform message arrives.
+ * @brief Called by flutter-drm-embedder when a platform message arrives.
  */
 int plugin_registry_on_platform_message(struct plugin_registry *registry, const FlutterPlatformMessage *message);
 
@@ -158,13 +158,13 @@ bool plugin_registry_is_plugin_present_locked(struct plugin_registry *registry, 
 
 int plugin_registry_deinit(void);
 
-void static_plugin_registry_add_plugin(const struct flutterpi_plugin_v2 *plugin);
+void static_plugin_registry_add_plugin(const struct flutter_drm_embedder_plugin_v2 *plugin);
 
 void static_plugin_registry_remove_plugin(const char *plugin_name);
 
-#define FLUTTERPI_PLUGIN(_name, _identifier_name, _init, _deinit)                \
+#define FLUTTER_DRM_EMBEDDER_PLUGIN(_name, _identifier_name, _init, _deinit)                \
     __attribute__((constructor)) static void __reg_plugin_##_identifier_name() { \
-        static struct flutterpi_plugin_v2 plugin = {                             \
+        static struct flutter_drm_embedder_plugin_v2 plugin = {                             \
             .name = (_name),                                                     \
             .init = (_init),                                                     \
             .deinit = (_deinit),                                                 \
@@ -174,4 +174,4 @@ void static_plugin_registry_remove_plugin(const char *plugin_name);
                                                                                  \
     __attribute__((destructor)) static void __unreg_plugin_##_identifier_name() { static_plugin_registry_remove_plugin(_name); }
 
-#endif  // _FLUTTERPI_SRC_PLUGINREGISTRY_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_PLUGINREGISTRY_H

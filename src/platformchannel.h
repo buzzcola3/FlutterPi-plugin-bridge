@@ -12,8 +12,8 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_PLATFORMCHANNEL_H
-#define _FLUTTERPI_SRC_PLATFORMCHANNEL_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_PLATFORMCHANNEL_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_PLATFORMCHANNEL_H
 
 #include <errno.h>
 #include <stdint.h>
@@ -1643,4 +1643,4 @@ ATTR_PURE const struct raw_std_value *raw_std_method_call_get_arg(const struct r
 #define for_each_element_in_raw_std_list(value, list) \
     for_each_element_in_raw_std_list_indexed(UNIQUE_NAME(__raw_std_list_element_index), value, list)
 
-#endif  // _FLUTTERPI_SRC_PLATFORMCHANNEL_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_PLATFORMCHANNEL_H

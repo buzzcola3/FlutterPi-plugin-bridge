@@ -9,7 +9,7 @@
 G_BEGIN_DECLS
 
 // Flutter Linux uses FlPluginRegistry as the entry point for registering plugins.
-// For flutter-pi's GTK shim, treat the registrar itself as the registry.
+// For flutter-drm-embedder's GTK shim, treat the registrar itself as the registry.
 
 typedef FlPluginRegistrar FlPluginRegistry;
 

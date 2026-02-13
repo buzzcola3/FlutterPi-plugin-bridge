@@ -8,7 +8,7 @@
 #include <gst/gstmessage.h>
 #include <gst/gstsegment.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "platformchannel.h"
 #include "plugins/audioplayers.h"
 #include "util/asserts.h"
@@ -133,7 +133,7 @@ struct audio_player *audio_player_new(char *player_id, char *channel) {
 
     gst_bus_get_pollfd(self->bus, &fd);
 
-    flutterpi_sd_event_add_io(&busfd_event_source, fd.fd, EPOLLIN, on_bus_fd_ready, self);
+    flutter_drm_embedder_sd_event_add_io(&busfd_event_source, fd.fd, EPOLLIN, on_bus_fd_ready, self);
 
     // Refresh continuously to emit recurring events
     g_timeout_add(1000, (GSourceFunc) audio_player_on_refresh, self);

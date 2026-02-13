@@ -10,7 +10,7 @@
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "keyboard.h"
 #include "pluginregistry.h"
 #include "util/asserts.h"
@@ -901,8 +901,8 @@ static void assert_key_modifiers_work() {
     (void) mods;
 }
 
-enum plugin_init_result rawkb_init(struct flutterpi *flutterpi, void **userdata_out) {
-    (void) flutterpi;
+enum plugin_init_result rawkb_init(struct flutter_drm_embedder *flutter_drm_embedder, void **userdata_out) {
+    (void) flutter_drm_embedder;
     (void) userdata_out;
 
     assert_key_modifiers_work();
@@ -910,9 +910,9 @@ enum plugin_init_result rawkb_init(struct flutterpi *flutterpi, void **userdata_
     return PLUGIN_INIT_RESULT_INITIALIZED;
 }
 
-void rawkb_deinit(struct flutterpi *flutterpi, void *userdata) {
-    (void) flutterpi;
+void rawkb_deinit(struct flutter_drm_embedder *flutter_drm_embedder, void *userdata) {
+    (void) flutter_drm_embedder;
     (void) userdata;
 }
 
-FLUTTERPI_PLUGIN("raw keyboard plugin", rawkb, rawkb_init, rawkb_deinit)
+FLUTTER_DRM_EMBEDDER_PLUGIN("raw keyboard plugin", rawkb, rawkb_init, rawkb_deinit)

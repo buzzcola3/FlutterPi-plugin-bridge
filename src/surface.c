@@ -2,7 +2,7 @@
 /*
  * Window Surface
  *
- * - provides an object that can be composited by flutter-pi
+ * - provides an object that can be composited by flutter-drm-embedder
  * - (by calling present_kms or present_fbdev on it)
  * - == basically the thing that stores the graphics of a FlutterLayer
  * - render surfaces are special kinds of scanout surfaces that flutter can render into

@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "pluginregistry.h"
 
 #define INDENT_STRING "                    "
@@ -132,7 +132,7 @@ int printStd(struct std_value *value, int indent) {
 static uint64_t testplugin_time_offset;
 
 static int on_response_json(struct platch_obj *object, void *userdata) {
-    uint64_t dt = flutterpi.flutter.libflutter_engine.FlutterEngineGetCurrentTime() - *((uint64_t *) userdata);
+    uint64_t dt = flutter_drm_embedder.flutter.libflutter_engine.FlutterEngineGetCurrentTime() - *((uint64_t *) userdata);
     free(userdata);
 
     if (object->codec == kNotImplemented) {
@@ -165,7 +165,7 @@ static int on_response_json(struct platch_obj *object, void *userdata) {
 }
 static int send_json(void) {
     uint64_t *time = malloc(sizeof(uint64_t));
-    *time = flutterpi.flutter.libflutter_engine.FlutterEngineGetCurrentTime();
+    *time = flutter_drm_embedder.flutter.libflutter_engine.FlutterEngineGetCurrentTime();
 
     char *method = "test";
     struct json_value argument = {
@@ -189,7 +189,7 @@ static int send_json(void) {
     return 0;
 }
 static int on_response_std(struct platch_obj *object, void *userdata) {
-    uint64_t dt = flutterpi.flutter.libflutter_engine.FlutterEngineGetCurrentTime() - *((uint64_t *) userdata);
+    uint64_t dt = flutter_drm_embedder.flutter.libflutter_engine.FlutterEngineGetCurrentTime() - *((uint64_t *) userdata);
     free(userdata);
 
     if (object->codec == kNotImplemented) {
@@ -222,7 +222,7 @@ static int on_response_std(struct platch_obj *object, void *userdata) {
 }
 static int send_std() {
     uint64_t *time = malloc(sizeof(uint64_t));
-    *time = flutterpi.flutter.libflutter_engine.FlutterEngineGetCurrentTime();
+    *time = flutter_drm_embedder.flutter.libflutter_engine.FlutterEngineGetCurrentTime();
 
     char *method = "test";
     struct std_value argument = {
@@ -290,7 +290,7 @@ static int on_receive_ping(char *channel, struct platch_obj *object, FlutterPlat
     return platch_respond(responsehandle, &(struct platch_obj){ .codec = kStringCodec, .string_value = "pong" });
 }
 
-enum plugin_init_result testp_init(struct flutterpi *flutterpi, void **userdata_out) {
+enum plugin_init_result testp_init(struct flutter_drm_embedder *flutter_drm_embedder, void **userdata_out) {
     int ok;
 
     ok = plugin_registry_set_receiver_locked(TESTPLUGIN_CHANNEL_JSON, kJSONMethodCall, on_receive_json);
@@ -313,19 +313,19 @@ enum plugin_init_result testp_init(struct flutterpi *flutterpi, void **userdata_
     return PLUGIN_INIT_RESULT_INITIALIZED;
 
 fail_remove_std_receiver:
-    plugin_registry_remove_receiver_v2_locked(flutterpi_get_plugin_registry(flutterpi), TESTPLUGIN_CHANNEL_STD);
+    plugin_registry_remove_receiver_v2_locked(flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder), TESTPLUGIN_CHANNEL_STD);
 
 fail_remove_json_receiver:
-    plugin_registry_remove_receiver_v2_locked(flutterpi_get_plugin_registry(flutterpi), TESTPLUGIN_CHANNEL_JSON);
+    plugin_registry_remove_receiver_v2_locked(flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder), TESTPLUGIN_CHANNEL_JSON);
 
     return PLUGIN_INIT_RESULT_ERROR;
 }
 
-void testp_deinit(struct flutterpi *flutterpi, void *userdata) {
-    plugin_registry_remove_receiver_v2_locked(flutterpi_get_plugin_registry(flutterpi), TESTPLUGIN_CHANNEL_PING);
-    plugin_registry_remove_receiver_v2_locked(flutterpi_get_plugin_registry(flutterpi), TESTPLUGIN_CHANNEL_STD);
-    plugin_registry_remove_receiver_v2_locked(flutterpi_get_plugin_registry(flutterpi), TESTPLUGIN_CHANNEL_JSON);
+void testp_deinit(struct flutter_drm_embedder *flutter_drm_embedder, void *userdata) {
+    plugin_registry_remove_receiver_v2_locked(flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder), TESTPLUGIN_CHANNEL_PING);
+    plugin_registry_remove_receiver_v2_locked(flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder), TESTPLUGIN_CHANNEL_STD);
+    plugin_registry_remove_receiver_v2_locked(flutter_drm_embedder_get_plugin_registry(flutter_drm_embedder), TESTPLUGIN_CHANNEL_JSON);
     return 0;
 }
 
-FLUTTERPI_PLUGIN("test plugin", test_plugin, testp_init, testp_deinit)
+FLUTTER_DRM_EMBEDDER_PLUGIN("test plugin", test_plugin, testp_init, testp_deinit)

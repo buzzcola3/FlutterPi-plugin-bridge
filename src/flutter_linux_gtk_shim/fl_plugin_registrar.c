@@ -4,11 +4,11 @@
 #include "fl_binary_messenger_internal.h"
 #include "fl_plugin_registrar_internal.h"
 #include "fl_texture_registrar_internal.h"
-#include "flutterpi_shim.h"
+#include "flutter_drm_embedder_shim.h"
 
 struct _FlPluginRegistrar {
     GObject parent_instance;
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     FlBinaryMessenger *messenger;
     FlTextureRegistrar *texture_registrar;
 };
@@ -36,11 +36,11 @@ static void fl_plugin_registrar_init(FlPluginRegistrar *self) {
     (void) self;
 }
 
-FlPluginRegistrar *fl_plugin_registrar_new_for_flutterpi(struct flutterpi *flutterpi) {
+FlPluginRegistrar *fl_plugin_registrar_new_for_flutter_drm_embedder(struct flutter_drm_embedder *flutter_drm_embedder) {
     FlPluginRegistrar *registrar = g_object_new(FL_TYPE_PLUGIN_REGISTRAR, NULL);
-    registrar->flutterpi = flutterpi;
-    registrar->messenger = fl_binary_messenger_new_for_flutterpi(flutterpi);
-    registrar->texture_registrar = fl_texture_registrar_new_for_flutterpi(flutterpi);
+    registrar->flutter_drm_embedder = flutter_drm_embedder;
+    registrar->messenger = fl_binary_messenger_new_for_flutter_drm_embedder(flutter_drm_embedder);
+    registrar->texture_registrar = fl_texture_registrar_new_for_flutter_drm_embedder(flutter_drm_embedder);
     return registrar;
 }
 

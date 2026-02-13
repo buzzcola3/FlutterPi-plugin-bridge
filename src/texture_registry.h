@@ -7,8 +7,8 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_TEXTURE_REGISTRY_H
-#define _FLUTTERPI_SRC_TEXTURE_REGISTRY_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_TEXTURE_REGISTRY_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_TEXTURE_REGISTRY_H
 
 #include <flutter_embedder.h>
 
@@ -80,4 +80,4 @@ int texture_push_unresolved_frame(struct texture *texture, const struct unresolv
 
 void texture_destroy(struct texture *texture);
 
-#endif  // _FLUTTERPI_SRC_TEXTURE_REGISTRY_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_TEXTURE_REGISTRY_H

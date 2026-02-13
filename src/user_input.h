@@ -8,8 +8,8 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_USER_INPUT_H
-#define _FLUTTERPI_SRC_USER_INPUT_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_USER_INPUT_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_USER_INPUT_H
 
 #include <flutter_embedder.h>
 #include <xkbcommon/xkbcommon.h>
@@ -123,4 +123,4 @@ void user_input_suspend(struct user_input *input);
 
 int user_input_resume(struct user_input *input);
 
-#endif  // _FLUTTERPI_SRC_USER_INPUT_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_USER_INPUT_H

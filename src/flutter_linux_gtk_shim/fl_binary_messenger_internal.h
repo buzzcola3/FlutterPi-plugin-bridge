@@ -2,11 +2,11 @@
 #ifndef FL_BINARY_MESSENGER_INTERNAL_H
 #define FL_BINARY_MESSENGER_INTERNAL_H
 
-struct flutterpi;
+struct flutter_drm_embedder;
 
 #include "flutter_linux/fl_binary_messenger.h"
 
-FlBinaryMessenger *fl_binary_messenger_new_for_flutterpi(struct flutterpi *flutterpi);
+FlBinaryMessenger *fl_binary_messenger_new_for_flutter_drm_embedder(struct flutter_drm_embedder *flutter_drm_embedder);
 
 void fl_binary_messenger_send_on_channel_no_response(FlBinaryMessenger *messenger, const gchar *channel, GBytes *message);
 

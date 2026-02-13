@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -83,10 +83,10 @@
 
 const char *const usage =
     "\
-flutter-pi - run flutter apps on your Raspberry Pi.\n\
+flutter-drm-embedder - run flutter apps on your Raspberry Pi.\n\
 \n\
 USAGE:\n\
-  flutter-pi [options] <bundle path> [flutter engine options]\n\
+  flutter-drm-embedder [options] <bundle path> [flutter engine options]\n\
 \n\
 OPTIONS:\n\
   --release                  Run the app in release mode. The AOT snapshot\n\
@@ -102,7 +102,7 @@ OPTIONS:\n\
   --vulkan                   Use vulkan for rendering.\n"
 #ifndef HAVE_VULKAN
     "\
-                             NOTE: This flutter-pi executable was built without\n\
+                             NOTE: This flutter-drm-embedder executable was built without\n\
                              vulkan support.\n"
 #endif
     "\n\
@@ -148,17 +148,17 @@ OPTIONS:\n\
     -h, --help                 Show this help and exit.\n\
 \n\
 EXAMPLES:\n\
-  flutter-pi ~/hello_world_app\n\
-  flutter-pi --release ~/hello_world_app\n\
-  flutter-pi -o portrait_up ./my_app\n\
-  flutter-pi -r 90 ./my_app\n\
-  flutter-pi -d \"155, 86\" ./my_app\n\
-  flutter-pi --videomode 1920x1080 ./my_app\n\
-  flutter-pi --videomode 1280x720@60 ./my_app\n\
+  flutter-drm-embedder ~/hello_world_app\n\
+  flutter-drm-embedder --release ~/hello_world_app\n\
+  flutter-drm-embedder -o portrait_up ./my_app\n\
+  flutter-drm-embedder -r 90 ./my_app\n\
+  flutter-drm-embedder -d \"155, 86\" ./my_app\n\
+  flutter-drm-embedder --videomode 1920x1080 ./my_app\n\
+  flutter-drm-embedder --videomode 1280x720@60 ./my_app\n\
 \n\
 SEE ALSO:\n\
   Author:  Hannes Winkler, a.k.a ardera\n\
-  Source:  https://github.com/ardera/flutter-pi\n\
+  Source:  https://github.com/ardera/flutter-drm-embedder\n\
   License: MIT\n\
 \n\
   For instructions on how to build an asset bundle or an AOT snapshot\n\
@@ -169,7 +169,7 @@ SEE ALSO:\n\
 
 struct libseat;
 
-struct flutterpi {
+struct flutter_drm_embedder {
     /**
 	 * @brief The KMS device.
 	 *
@@ -276,7 +276,7 @@ struct device_id_and_fd {
 };
 
 /// TODO: Remove this
-struct flutterpi *flutterpi;
+struct flutter_drm_embedder *flutter_drm_embedder;
 
 static bool runs_platform_tasks_on_current_thread(void *userdata);
 
@@ -288,42 +288,42 @@ static bool runs_platform_tasks_on_current_thread(void *userdata);
 /// Called on some flutter internal thread when the flutter
 /// rendering EGLContext should be made current.
 static bool on_make_current(void *userdata) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     EGLSurface surface;
     int ok;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    ASSERT_NOT_NULL(flutterpi->gl_renderer);
+    flutter_drm_embedder = userdata;
+    ASSERT_NOT_NULL(flutter_drm_embedder->gl_renderer);
 
     // Ideally we don't make a surface current here at all.
     // But that doesn't work right now.
-    // if (compositor_has_egl_surface(flutterpi->compositor)) {
-    //     surface = compositor_get_egl_surface(flutterpi->compositor);
+    // if (compositor_has_egl_surface(flutter_drm_embedder->compositor)) {
+    //     surface = compositor_get_egl_surface(flutter_drm_embedder->compositor);
     //     if (surface == EGL_NO_SURFACE) {
     //         /// TODO: Get a fake EGL Surface just for initialization.
     //         LOG_ERROR("Couldn't get an EGL surface from the compositor.\n");
     //         return false;
     //     }
-    //     ok = gl_renderer_make_flutter_rendering_context_current(flutterpi->gl_renderer, surface);
+    //     ok = gl_renderer_make_flutter_rendering_context_current(flutter_drm_embedder->gl_renderer, surface);
     //     if (ok != 0) {
     //         return false;
     //     }
     // } else {
-    //     ok = gl_renderer_make_flutter_setup_context_current(flutterpi->gl_renderer);
+    //     ok = gl_renderer_make_flutter_setup_context_current(flutter_drm_embedder->gl_renderer);
     //     if (ok != 0) {
     //         return false;
     //     }
     // }
 
-    surface = compositor_get_egl_surface(flutterpi->compositor);
+    surface = compositor_get_egl_surface(flutter_drm_embedder->compositor);
     if (surface == EGL_NO_SURFACE) {
         /// TODO: Get a fake EGL Surface just for initialization.
         LOG_ERROR("Couldn't get an EGL surface from the compositor.\n");
         return false;
     }
 
-    ok = gl_renderer_make_flutter_rendering_context_current(flutterpi->gl_renderer, surface);
+    ok = gl_renderer_make_flutter_rendering_context_current(flutter_drm_embedder->gl_renderer, surface);
     if (ok != 0) {
         return false;
     }
@@ -334,14 +334,14 @@ static bool on_make_current(void *userdata) {
 /// Called on some flutter internal thread to
 /// clear the EGLContext.
 static bool on_clear_current(void *userdata) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     int ok;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    ASSERT_NOT_NULL(flutterpi->gl_renderer);
+    flutter_drm_embedder = userdata;
+    ASSERT_NOT_NULL(flutter_drm_embedder->gl_renderer);
 
-    ok = gl_renderer_clear_current(flutterpi->gl_renderer);
+    ok = gl_renderer_clear_current(flutter_drm_embedder->gl_renderer);
     if (ok != 0) {
         return false;
     }
@@ -363,27 +363,27 @@ static bool on_present(void *userdata) {
 /// (Won't be called since we're supplying a compositor,
 /// still needs to be present)
 static uint32_t fbo_callback(void *userdata) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    (void) flutterpi;
+    flutter_drm_embedder = userdata;
+    (void) flutter_drm_embedder;
 
-    TRACER_INSTANT(flutterpi->tracer, "fbo_callback");
+    TRACER_INSTANT(flutter_drm_embedder->tracer, "fbo_callback");
     return 0;
 }
 
 /// Called on some flutter internal thread when the flutter
 /// resource uploading EGLContext should be made current.
 static bool on_make_resource_current(void *userdata) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     int ok;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    ASSERT_NOT_NULL(flutterpi->gl_renderer);
+    flutter_drm_embedder = userdata;
+    ASSERT_NOT_NULL(flutter_drm_embedder->gl_renderer);
 
-    ok = gl_renderer_make_flutter_resource_uploading_context_current(flutterpi->gl_renderer);
+    ok = gl_renderer_make_flutter_resource_uploading_context_current(flutter_drm_embedder->gl_renderer);
     if (ok != 0) {
         return false;
     }
@@ -393,13 +393,13 @@ static bool on_make_resource_current(void *userdata) {
 
 /// Called by flutter
 static void *proc_resolver(void *userdata, const char *name) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    ASSERT_NOT_NULL(flutterpi->gl_renderer);
+    flutter_drm_embedder = userdata;
+    ASSERT_NOT_NULL(flutter_drm_embedder->gl_renderer);
 
-    return gl_renderer_get_proc_address(flutterpi->gl_renderer, name);
+    return gl_renderer_get_proc_address(flutter_drm_embedder->gl_renderer, name);
 }
 #endif
 
@@ -423,13 +423,13 @@ UNUSED static void *on_get_vulkan_proc_address(void *userdata, FlutterVulkanInst
 }
 
 UNUSED static FlutterVulkanImage on_get_next_vulkan_image(void *userdata, const FlutterFrameInfo *frameinfo) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
     ASSERT_NOT_NULL(frameinfo);
-    flutterpi = userdata;
+    flutter_drm_embedder = userdata;
 
-    (void) flutterpi;
+    (void) flutter_drm_embedder;
     (void) frameinfo;
 
     UNIMPLEMENTED();
@@ -437,13 +437,13 @@ UNUSED static FlutterVulkanImage on_get_next_vulkan_image(void *userdata, const 
 }
 
 UNUSED static bool on_present_vulkan_image(void *userdata, const FlutterVulkanImage *image) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
     ASSERT_NOT_NULL(image);
-    flutterpi = userdata;
+    flutter_drm_embedder = userdata;
 
-    (void) flutterpi;
+    (void) flutter_drm_embedder;
     (void) image;
 
     UNIMPLEMENTED();
@@ -455,19 +455,19 @@ static void on_platform_message(const FlutterPlatformMessage *message, void *use
 
     (void) userdata;
 
-    ok = plugin_registry_on_platform_message(flutterpi->plugin_registry, message);
+    ok = plugin_registry_on_platform_message(flutter_drm_embedder->plugin_registry, message);
     if (ok != 0) {
         LOG_ERROR("Error handling platform message. plugin_registry_on_platform_message: %s\n", strerror(ok));
     }
 }
 
-static bool flutterpi_runs_platform_tasks_on_current_thread(struct flutterpi *flutterpi) {
-    ASSERT_NOT_NULL(flutterpi);
-    return pthread_equal(pthread_self(), flutterpi->event_loop_thread) != 0;
+static bool flutter_drm_embedder_runs_platform_tasks_on_current_thread(struct flutter_drm_embedder *flutter_drm_embedder) {
+    ASSERT_NOT_NULL(flutter_drm_embedder);
+    return pthread_equal(pthread_self(), flutter_drm_embedder->event_loop_thread) != 0;
 }
 
 struct frame_req {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     intptr_t baton;
     uint64_t vblank_ns, next_vblank_ns;
 };
@@ -479,10 +479,10 @@ static int on_deferred_begin_frame(void *userdata) {
     ASSERT_NOT_NULL(userdata);
     req = userdata;
 
-    assert(flutterpi_runs_platform_tasks_on_current_thread(req->flutterpi));
+    assert(flutter_drm_embedder_runs_platform_tasks_on_current_thread(req->flutter_drm_embedder));
 
-    TRACER_INSTANT(req->flutterpi->tracer, "FlutterEngineOnVsync");
-    engine_result = req->flutterpi->flutter.procs.OnVsync(req->flutterpi->flutter.engine, req->baton, req->vblank_ns, req->next_vblank_ns);
+    TRACER_INSTANT(req->flutter_drm_embedder->tracer, "FlutterEngineOnVsync");
+    engine_result = req->flutter_drm_embedder->flutter.procs.OnVsync(req->flutter_drm_embedder->flutter.engine, req->baton, req->vblank_ns, req->next_vblank_ns);
 
     free(req);
 
@@ -502,10 +502,10 @@ UNUSED static void on_begin_frame(void *userdata, uint64_t vblank_ns, uint64_t n
     ASSERT_NOT_NULL(userdata);
     req = userdata;
 
-    if (flutterpi_runs_platform_tasks_on_current_thread(req->flutterpi)) {
-        TRACER_INSTANT(req->flutterpi->tracer, "FlutterEngineOnVsync");
+    if (flutter_drm_embedder_runs_platform_tasks_on_current_thread(req->flutter_drm_embedder)) {
+        TRACER_INSTANT(req->flutter_drm_embedder->tracer, "FlutterEngineOnVsync");
 
-        engine_result = req->flutterpi->flutter.procs.OnVsync(req->flutterpi->flutter.engine, req->baton, vblank_ns, next_vblank_ns);
+        engine_result = req->flutter_drm_embedder->flutter.procs.OnVsync(req->flutter_drm_embedder->flutter.engine, req->baton, vblank_ns, next_vblank_ns);
         if (engine_result != kSuccess) {
             LOG_ERROR("Couldn't signal frame begin to flutter engine. FlutterEngineOnVsync: %s\n", FLUTTER_RESULT_TO_STRING(engine_result));
             goto fail_free_req;
@@ -515,7 +515,7 @@ UNUSED static void on_begin_frame(void *userdata, uint64_t vblank_ns, uint64_t n
     } else {
         req->vblank_ns = vblank_ns;
         req->next_vblank_ns = next_vblank_ns;
-        ok = flutterpi_post_platform_task(on_deferred_begin_frame, req);
+        ok = flutter_drm_embedder_post_platform_task(on_deferred_begin_frame, req);
         if (ok != 0) {
             LOG_ERROR("Couldn't defer signalling frame begin.\n");
             goto fail_free_req;
@@ -533,14 +533,14 @@ fail_free_req:
 /// and also get the vblank timestamp of the pageflip preceding that frame.
 UNUSED static void on_frame_request(void *userdata, intptr_t baton) {
     FlutterEngineResult engine_result;
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     struct frame_req *req;
     int ok;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
+    flutter_drm_embedder = userdata;
 
-    TRACER_INSTANT(flutterpi->tracer, "on_frame_request");
+    TRACER_INSTANT(flutter_drm_embedder->tracer, "on_frame_request");
 
     req = malloc(sizeof *req);
     if (req == NULL) {
@@ -548,16 +548,16 @@ UNUSED static void on_frame_request(void *userdata, intptr_t baton) {
         return;
     }
 
-    req->flutterpi = flutterpi;
+    req->flutter_drm_embedder = flutter_drm_embedder;
     req->baton = baton;
     req->vblank_ns = get_monotonic_time();
-    req->next_vblank_ns = req->vblank_ns + (1000000000.0 / compositor_get_refresh_rate(flutterpi->compositor));
+    req->next_vblank_ns = req->vblank_ns + (1000000000.0 / compositor_get_refresh_rate(flutter_drm_embedder->compositor));
 
-    if (flutterpi_runs_platform_tasks_on_current_thread(req->flutterpi)) {
-        TRACER_INSTANT(req->flutterpi->tracer, "FlutterEngineOnVsync");
+    if (flutter_drm_embedder_runs_platform_tasks_on_current_thread(req->flutter_drm_embedder)) {
+        TRACER_INSTANT(req->flutter_drm_embedder->tracer, "FlutterEngineOnVsync");
 
         engine_result =
-            req->flutterpi->flutter.procs.OnVsync(req->flutterpi->flutter.engine, req->baton, req->vblank_ns, req->next_vblank_ns);
+            req->flutter_drm_embedder->flutter.procs.OnVsync(req->flutter_drm_embedder->flutter.engine, req->baton, req->vblank_ns, req->next_vblank_ns);
         if (engine_result != kSuccess) {
             LOG_ERROR("Couldn't signal frame begin to flutter engine. FlutterEngineOnVsync: %s\n", FLUTTER_RESULT_TO_STRING(engine_result));
             goto fail_free_req;
@@ -565,7 +565,7 @@ UNUSED static void on_frame_request(void *userdata, intptr_t baton) {
 
         free(req);
     } else {
-        ok = flutterpi_post_platform_task(on_deferred_begin_frame, req);
+        ok = flutter_drm_embedder_post_platform_task(on_deferred_begin_frame, req);
         if (ok != 0) {
             LOG_ERROR("Couldn't defer signalling frame begin.\n");
             goto fail_free_req;
@@ -580,12 +580,12 @@ fail_free_req:
 
 UNUSED static FlutterTransformation on_get_transformation(void *userdata) {
     struct view_geometry geometry;
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
+    flutter_drm_embedder = userdata;
 
-    compositor_get_view_geometry(flutterpi->compositor, &geometry);
+    compositor_get_view_geometry(flutter_drm_embedder->compositor, &geometry);
 
     return MAT3F_AS_FLUTTER_TRANSFORM(geometry.view_to_display_transform);
 }
@@ -611,7 +611,7 @@ static int on_execute_platform_task(sd_event_source *s, void *userdata) {
     return 0;
 }
 
-int flutterpi_post_platform_task(int (*callback)(void *userdata), void *userdata) {
+int flutter_drm_embedder_post_platform_task(int (*callback)(void *userdata), void *userdata) {
     struct platform_task *task;
     sd_event_source *src;
     int ok;
@@ -624,11 +624,11 @@ int flutterpi_post_platform_task(int (*callback)(void *userdata), void *userdata
     task->callback = callback;
     task->userdata = userdata;
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_lock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_lock(&flutter_drm_embedder->event_loop_mutex);
     }
 
-    ok = sd_event_add_defer(flutterpi->event_loop, &src, on_execute_platform_task, task);
+    ok = sd_event_add_defer(flutter_drm_embedder->event_loop, &src, on_execute_platform_task, task);
     if (ok < 0) {
         LOG_ERROR("Error posting platform task to main loop. sd_event_add_defer: %s\n", strerror(-ok));
         ok = -ok;
@@ -638,8 +638,8 @@ int flutterpi_post_platform_task(int (*callback)(void *userdata), void *userdata
     // Higher values mean lower priority. So later platform tasks are handled later too.
     sd_event_source_set_priority(src, atomic_fetch_add(&platform_task_counter, 1));
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        ok = write(flutterpi->wakeup_event_loop_fd, (uint8_t[8]){ 0, 0, 0, 0, 0, 0, 0, 1 }, 8);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        ok = write(flutter_drm_embedder->wakeup_event_loop_fd, (uint8_t[8]){ 0, 0, 0, 0, 0, 0, 0, 1 }, 8);
         if (ok < 0) {
             ok = errno;
             LOG_ERROR("Error arming main loop for platform task. write: %s\n", strerror(ok));
@@ -647,15 +647,15 @@ int flutterpi_post_platform_task(int (*callback)(void *userdata), void *userdata
         }
     }
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
     }
 
     return 0;
 
 fail_unlock_event_loop:
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
     }
 
     return ok;
@@ -682,7 +682,7 @@ static int on_execute_platform_task_with_time(sd_event_source *s, uint64_t usec,
     return 0;
 }
 
-int flutterpi_post_platform_task_with_time(int (*callback)(void *userdata), void *userdata, uint64_t target_time_usec) {
+int flutter_drm_embedder_post_platform_task_with_time(int (*callback)(void *userdata), void *userdata, uint64_t target_time_usec) {
     struct platform_task *task;
     //sd_event_source *source;
     int ok;
@@ -695,71 +695,71 @@ int flutterpi_post_platform_task_with_time(int (*callback)(void *userdata), void
     task->callback = callback;
     task->userdata = userdata;
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_lock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_lock(&flutter_drm_embedder->event_loop_mutex);
     }
 
-    ok = sd_event_add_time(flutterpi->event_loop, NULL, CLOCK_MONOTONIC, target_time_usec, 1, on_execute_platform_task_with_time, task);
+    ok = sd_event_add_time(flutter_drm_embedder->event_loop, NULL, CLOCK_MONOTONIC, target_time_usec, 1, on_execute_platform_task_with_time, task);
     if (ok < 0) {
         LOG_ERROR("Error posting platform task to main loop. sd_event_add_time: %s\n", strerror(-ok));
         ok = -ok;
         goto fail_unlock_event_loop;
     }
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        ok = write(flutterpi->wakeup_event_loop_fd, (uint8_t[8]){ 0, 0, 0, 0, 0, 0, 0, 1 }, 8);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        ok = write(flutter_drm_embedder->wakeup_event_loop_fd, (uint8_t[8]){ 0, 0, 0, 0, 0, 0, 0, 1 }, 8);
         if (ok < 0) {
-            perror("[flutter-pi] Error arming main loop for platform task. write");
+            perror("[flutter-drm-embedder] Error arming main loop for platform task. write");
             ok = errno;
             goto fail_unlock_event_loop;
         }
     }
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
     }
 
     return 0;
 
 fail_unlock_event_loop:
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
     }
     free(task);
     return ok;
 }
 
-int flutterpi_sd_event_add_io(sd_event_source **source_out, int fd, uint32_t events, sd_event_io_handler_t callback, void *userdata) {
+int flutter_drm_embedder_sd_event_add_io(sd_event_source **source_out, int fd, uint32_t events, sd_event_io_handler_t callback, void *userdata) {
     int ok;
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_lock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_lock(&flutter_drm_embedder->event_loop_mutex);
     }
 
-    ok = sd_event_add_io(flutterpi->event_loop, source_out, fd, events, callback, userdata);
+    ok = sd_event_add_io(flutter_drm_embedder->event_loop, source_out, fd, events, callback, userdata);
     if (ok < 0) {
         LOG_ERROR("Could not add IO callback to event loop. sd_event_add_io: %s\n", strerror(-ok));
         return -ok;
     }
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        ok = write(flutterpi->wakeup_event_loop_fd, (uint8_t[8]){ 0, 0, 0, 0, 0, 0, 0, 1 }, 8);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        ok = write(flutter_drm_embedder->wakeup_event_loop_fd, (uint8_t[8]){ 0, 0, 0, 0, 0, 0, 0, 1 }, 8);
         if (ok < 0) {
-            perror("[flutter-pi] Error arming main loop for io callback. write");
+            perror("[flutter-drm-embedder] Error arming main loop for io callback. write");
             ok = errno;
             goto fail_unlock_event_loop;
         }
     }
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
     }
 
     return 0;
 
 fail_unlock_event_loop:
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
     }
     return ok;
 }
@@ -771,7 +771,7 @@ static int on_execute_flutter_task(void *userdata) {
 
     task = userdata;
 
-    result = flutterpi->flutter.procs.RunTask(flutterpi->flutter.engine, task);
+    result = flutter_drm_embedder->flutter.procs.RunTask(flutter_drm_embedder->flutter.engine, task);
     if (result != kSuccess) {
         LOG_ERROR("Error running platform task. FlutterEngineRunTask: %d\n", result);
         free(task);
@@ -796,7 +796,7 @@ static void on_post_flutter_task(FlutterTask task, uint64_t target_time, void *u
 
     *dup_task = task;
 
-    ok = flutterpi_post_platform_task_with_time(on_execute_flutter_task, dup_task, target_time / 1000);
+    ok = flutter_drm_embedder_post_platform_task_with_time(on_execute_flutter_task, dup_task, target_time / 1000);
     if (ok != 0) {
         free(dup_task);
     }
@@ -810,8 +810,8 @@ static int on_send_platform_message(void *userdata) {
     msg = userdata;
 
     if (msg->is_response) {
-        result = flutterpi->flutter.procs
-                     .SendPlatformMessageResponse(flutterpi->flutter.engine, msg->target_handle, msg->message, msg->message_size);
+        result = flutter_drm_embedder->flutter.procs
+                     .SendPlatformMessageResponse(flutter_drm_embedder->flutter.engine, msg->target_handle, msg->message, msg->message_size);
     } else {
         FlutterPlatformMessage message;
         memset(&message, 0, sizeof(message));
@@ -822,7 +822,7 @@ static int on_send_platform_message(void *userdata) {
         message.response_handle = msg->response_handle;
         message.message = msg->message;
 
-        result = flutterpi->flutter.procs.SendPlatformMessage(flutterpi->flutter.engine, &message);
+        result = flutter_drm_embedder->flutter.procs.SendPlatformMessage(flutter_drm_embedder->flutter.engine, &message);
     }
 
     if (msg->message) {
@@ -842,8 +842,8 @@ static int on_send_platform_message(void *userdata) {
     return 0;
 }
 
-int flutterpi_send_platform_message(
-    struct flutterpi *flutterpi,
+int flutter_drm_embedder_send_platform_message(
+    struct flutter_drm_embedder *flutter_drm_embedder,
     const char *channel,
     const uint8_t *restrict message,
     size_t message_size,
@@ -853,9 +853,9 @@ int flutterpi_send_platform_message(
     FlutterEngineResult result;
     int ok;
 
-    if (runs_platform_tasks_on_current_thread(flutterpi)) {
-        result = flutterpi->flutter.procs.SendPlatformMessage(
-            flutterpi->flutter.engine,
+    if (runs_platform_tasks_on_current_thread(flutter_drm_embedder)) {
+        result = flutter_drm_embedder->flutter.procs.SendPlatformMessage(
+            flutter_drm_embedder->flutter.engine,
             &(const FlutterPlatformMessage){
                 .struct_size = sizeof(FlutterPlatformMessage),
                 .channel = channel,
@@ -896,7 +896,7 @@ int flutterpi_send_platform_message(
             msg->message_size = 0;
         }
 
-        ok = flutterpi_post_platform_task(on_send_platform_message, msg);
+        ok = flutter_drm_embedder_post_platform_task(on_send_platform_message, msg);
         if (ok != 0) {
             if (message && message_size) {
                 free(msg->message);
@@ -910,7 +910,7 @@ int flutterpi_send_platform_message(
     return 0;
 }
 
-int flutterpi_respond_to_platform_message(
+int flutter_drm_embedder_respond_to_platform_message(
     const FlutterPlatformMessageResponseHandle *handle,
     const uint8_t *restrict message,
     size_t message_size
@@ -919,8 +919,8 @@ int flutterpi_respond_to_platform_message(
     FlutterEngineResult result;
     int ok;
 
-    if (flutterpi_runs_platform_tasks_on_current_thread(flutterpi)) {
-        result = flutterpi->flutter.procs.SendPlatformMessageResponse(flutterpi->flutter.engine, handle, message, message_size);
+    if (flutter_drm_embedder_runs_platform_tasks_on_current_thread(flutter_drm_embedder)) {
+        result = flutter_drm_embedder->flutter.procs.SendPlatformMessageResponse(flutter_drm_embedder->flutter.engine, handle, message, message_size);
         if (result != kSuccess) {
             LOG_ERROR(
                 "Error sending platform message response. FlutterEngineSendPlatformMessageResponse: %s\n",
@@ -948,7 +948,7 @@ int flutterpi_respond_to_platform_message(
             msg->message = 0;
         }
 
-        ok = flutterpi_post_platform_task(on_send_platform_message, msg);
+        ok = flutter_drm_embedder_post_platform_task(on_send_platform_message, msg);
         if (ok != 0) {
             if (msg->message) {
                 free(msg->message);
@@ -960,24 +960,24 @@ int flutterpi_respond_to_platform_message(
     return 0;
 }
 
-struct texture_registry *flutterpi_get_texture_registry(struct flutterpi *flutterpi) {
-    ASSERT_NOT_NULL(flutterpi);
-    ASSERT_NOT_NULL(flutterpi->texture_registry);
-    return flutterpi->texture_registry;
+struct texture_registry *flutter_drm_embedder_get_texture_registry(struct flutter_drm_embedder *flutter_drm_embedder) {
+    ASSERT_NOT_NULL(flutter_drm_embedder);
+    ASSERT_NOT_NULL(flutter_drm_embedder->texture_registry);
+    return flutter_drm_embedder->texture_registry;
 }
 
-struct plugin_registry *flutterpi_get_plugin_registry(struct flutterpi *flutterpi) {
-    ASSERT_NOT_NULL(flutterpi);
-    ASSERT_NOT_NULL(flutterpi->plugin_registry);
-    return flutterpi->plugin_registry;
+struct plugin_registry *flutter_drm_embedder_get_plugin_registry(struct flutter_drm_embedder *flutter_drm_embedder) {
+    ASSERT_NOT_NULL(flutter_drm_embedder);
+    ASSERT_NOT_NULL(flutter_drm_embedder->plugin_registry);
+    return flutter_drm_embedder->plugin_registry;
 }
 
 FlutterPlatformMessageResponseHandle *
-flutterpi_create_platform_message_response_handle(struct flutterpi *flutterpi, FlutterDataCallback data_callback, void *userdata) {
+flutter_drm_embedder_create_platform_message_response_handle(struct flutter_drm_embedder *flutter_drm_embedder, FlutterDataCallback data_callback, void *userdata) {
     FlutterPlatformMessageResponseHandle *handle;
     FlutterEngineResult engine_result;
 
-    ASSERT_NOT_NULL(flutterpi);
+    ASSERT_NOT_NULL(flutter_drm_embedder);
     ASSERT_NOT_NULL(data_callback);
 
     // FlutterEngineResult FlutterPlatformMessageCreateResponseHandle(
@@ -988,7 +988,7 @@ flutterpi_create_platform_message_response_handle(struct flutterpi *flutterpi, F
     // );
 
     engine_result =
-        flutterpi->flutter.procs.PlatformMessageCreateResponseHandle(flutterpi->flutter.engine, data_callback, userdata, &handle);
+        flutter_drm_embedder->flutter.procs.PlatformMessageCreateResponseHandle(flutter_drm_embedder->flutter.engine, data_callback, userdata, &handle);
     if (engine_result != kSuccess) {
         LOG_ERROR(
             "Couldn't create platform message response handle. FlutterPlatformMessageCreateResponseHandle: %s\n",
@@ -1000,10 +1000,10 @@ flutterpi_create_platform_message_response_handle(struct flutterpi *flutterpi, F
     return handle;
 }
 
-void flutterpi_release_platform_message_response_handle(struct flutterpi *flutterpi, FlutterPlatformMessageResponseHandle *handle) {
+void flutter_drm_embedder_release_platform_message_response_handle(struct flutter_drm_embedder *flutter_drm_embedder, FlutterPlatformMessageResponseHandle *handle) {
     FlutterEngineResult engine_result;
 
-    ASSERT_NOT_NULL(flutterpi);
+    ASSERT_NOT_NULL(flutter_drm_embedder);
     ASSERT_NOT_NULL(handle);
 
     // FlutterEngineResult FlutterPlatformMessageReleaseResponseHandle(
@@ -1011,7 +1011,7 @@ void flutterpi_release_platform_message_response_handle(struct flutterpi *flutte
     //     FlutterPlatformMessageResponseHandle* response
     // );
 
-    engine_result = flutterpi->flutter.procs.PlatformMessageReleaseResponseHandle(flutterpi->flutter.engine, handle);
+    engine_result = flutter_drm_embedder->flutter.procs.PlatformMessageReleaseResponseHandle(flutter_drm_embedder->flutter.engine, handle);
     if (engine_result != kSuccess) {
         // We can't do anything about it though.
         LOG_ERROR(
@@ -1021,52 +1021,52 @@ void flutterpi_release_platform_message_response_handle(struct flutterpi *flutte
     }
 }
 
-struct texture *flutterpi_create_texture(struct flutterpi *flutterpi) {
-    return texture_new(flutterpi_get_texture_registry(flutterpi));
+struct texture *flutter_drm_embedder_create_texture(struct flutter_drm_embedder *flutter_drm_embedder) {
+    return texture_new(flutter_drm_embedder_get_texture_registry(flutter_drm_embedder));
 }
 
-const char *flutterpi_get_asset_bundle_path(struct flutterpi *flutterpi) {
-    return flutterpi->flutter.paths->asset_bundle_path;
+const char *flutter_drm_embedder_get_asset_bundle_path(struct flutter_drm_embedder *flutter_drm_embedder) {
+    return flutter_drm_embedder->flutter.paths->asset_bundle_path;
 }
 
-const char *flutterpi_get_bundle_path(struct flutterpi *flutterpi) {
-    ASSERT_NOT_NULL(flutterpi);
-    return flutterpi->flutter.bundle_path;
+const char *flutter_drm_embedder_get_bundle_path(struct flutter_drm_embedder *flutter_drm_embedder) {
+    ASSERT_NOT_NULL(flutter_drm_embedder);
+    return flutter_drm_embedder->flutter.bundle_path;
 }
 
 /// TODO: Make this refcounted if we're gonna use it from multiple threads.
-struct gbm_device *flutterpi_get_gbm_device(struct flutterpi *flutterpi) {
-    return drmdev_get_gbm_device(flutterpi->drmdev);
+struct gbm_device *flutter_drm_embedder_get_gbm_device(struct flutter_drm_embedder *flutter_drm_embedder) {
+    return drmdev_get_gbm_device(flutter_drm_embedder->drmdev);
 }
 
-bool flutterpi_has_gl_renderer(struct flutterpi *flutterpi) {
-    ASSERT_NOT_NULL(flutterpi);
-    return flutterpi->gl_renderer != NULL;
+bool flutter_drm_embedder_has_gl_renderer(struct flutter_drm_embedder *flutter_drm_embedder) {
+    ASSERT_NOT_NULL(flutter_drm_embedder);
+    return flutter_drm_embedder->gl_renderer != NULL;
 }
 
-struct gl_renderer *flutterpi_get_gl_renderer(struct flutterpi *flutterpi) {
-    ASSERT_NOT_NULL(flutterpi);
-    return flutterpi->gl_renderer;
+struct gl_renderer *flutter_drm_embedder_get_gl_renderer(struct flutter_drm_embedder *flutter_drm_embedder) {
+    ASSERT_NOT_NULL(flutter_drm_embedder);
+    return flutter_drm_embedder->gl_renderer;
 }
 
-void flutterpi_set_pointer_kind(struct flutterpi *flutterpi, enum pointer_kind kind) {
-    return compositor_set_cursor(flutterpi->compositor, false, false, true, kind, false, VEC2F(0, 0));
+void flutter_drm_embedder_set_pointer_kind(struct flutter_drm_embedder *flutter_drm_embedder, enum pointer_kind kind) {
+    return compositor_set_cursor(flutter_drm_embedder->compositor, false, false, true, kind, false, VEC2F(0, 0));
 }
 
-void flutterpi_trace_event_instant(struct flutterpi *flutterpi, const char *name) {
-    flutterpi->flutter.procs.TraceEventInstant(name);
+void flutter_drm_embedder_trace_event_instant(struct flutter_drm_embedder *flutter_drm_embedder, const char *name) {
+    flutter_drm_embedder->flutter.procs.TraceEventInstant(name);
 }
 
-void flutterpi_trace_event_begin(struct flutterpi *flutterpi, const char *name) {
-    flutterpi->flutter.procs.TraceEventDurationBegin(name);
+void flutter_drm_embedder_trace_event_begin(struct flutter_drm_embedder *flutter_drm_embedder, const char *name) {
+    flutter_drm_embedder->flutter.procs.TraceEventDurationBegin(name);
 }
 
-void flutterpi_trace_event_end(struct flutterpi *flutterpi, const char *name) {
-    flutterpi->flutter.procs.TraceEventDurationEnd(name);
+void flutter_drm_embedder_trace_event_end(struct flutter_drm_embedder *flutter_drm_embedder, const char *name) {
+    flutter_drm_embedder->flutter.procs.TraceEventDurationEnd(name);
 }
 
 static bool runs_platform_tasks_on_current_thread(void *userdata) {
-    return flutterpi_runs_platform_tasks_on_current_thread(userdata);
+    return flutter_drm_embedder_runs_platform_tasks_on_current_thread(userdata);
 }
 
 static int on_wakeup_main_loop(sd_event_source *s, int fd, uint32_t revents, void *userdata) {
@@ -1079,7 +1079,7 @@ static int on_wakeup_main_loop(sd_event_source *s, int fd, uint32_t revents, voi
 
     ok = read(fd, buffer, 8);
     if (ok < 0) {
-        perror("[flutter-pi] Could not read mainloop wakeup userdata. read");
+        perror("[flutter-drm-embedder] Could not read mainloop wakeup userdata. read");
         return errno;
     }
 
@@ -1104,19 +1104,19 @@ static int on_drmdev_ready(sd_event_source *s, int fd, uint32_t revents, void *u
 }
 
 static const FlutterLocale *on_compute_platform_resolved_locales(const FlutterLocale **locales, size_t n_locales) {
-    return locales_on_compute_platform_resolved_locale(flutterpi->locales, locales, n_locales);
+    return locales_on_compute_platform_resolved_locale(flutter_drm_embedder->locales, locales, n_locales);
 }
 
 #ifdef HAVE_EGL_GLES2
 static bool
 on_gl_external_texture_frame_callback(void *userdata, int64_t texture_id, size_t width, size_t height, FlutterOpenGLTexture *texture_out) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
 
-    flutterpi = userdata;
+    flutter_drm_embedder = userdata;
 
-    return texture_registry_gl_external_texture_frame_callback(flutterpi->texture_registry, texture_id, width, height, texture_out);
+    return texture_registry_gl_external_texture_frame_callback(flutter_drm_embedder->texture_registry, texture_id, width, height, texture_out);
 }
 #endif
 
@@ -1204,13 +1204,13 @@ static int get_flutter_engine_procs(void *engine_handle, FlutterEngineProcTable 
 
 static int on_register_texture(void *userdata, int64_t texture_identifier) {
     FlutterEngineResult engine_result;
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    ASSERT_NOT_NULL(flutterpi->flutter.engine);
+    flutter_drm_embedder = userdata;
+    ASSERT_NOT_NULL(flutter_drm_embedder->flutter.engine);
 
-    engine_result = flutterpi->flutter.procs.RegisterExternalTexture(flutterpi->flutter.engine, texture_identifier);
+    engine_result = flutter_drm_embedder->flutter.procs.RegisterExternalTexture(flutter_drm_embedder->flutter.engine, texture_identifier);
     if (engine_result != kSuccess) {
         LOG_ERROR(
             "Error registering external texture to flutter engine. FlutterEngineRegisterExternalTexture: %s\n",
@@ -1224,13 +1224,13 @@ static int on_register_texture(void *userdata, int64_t texture_identifier) {
 
 static int on_unregister_texture(void *userdata, int64_t texture_identifier) {
     FlutterEngineResult engine_result;
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    ASSERT_NOT_NULL(flutterpi->flutter.engine);
+    flutter_drm_embedder = userdata;
+    ASSERT_NOT_NULL(flutter_drm_embedder->flutter.engine);
 
-    engine_result = flutterpi->flutter.procs.UnregisterExternalTexture(flutterpi->flutter.engine, texture_identifier);
+    engine_result = flutter_drm_embedder->flutter.procs.UnregisterExternalTexture(flutter_drm_embedder->flutter.engine, texture_identifier);
     if (engine_result != kSuccess) {
         LOG_ERROR(
             "Error unregistering external texture from flutter engine. FlutterEngineUnregisterExternalTexture: %s\n",
@@ -1244,13 +1244,13 @@ static int on_unregister_texture(void *userdata, int64_t texture_identifier) {
 
 static int on_mark_texture_frame_available(void *userdata, int64_t texture_identifier) {
     FlutterEngineResult engine_result;
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    ASSERT_NOT_NULL(flutterpi->flutter.engine);
+    flutter_drm_embedder = userdata;
+    ASSERT_NOT_NULL(flutter_drm_embedder->flutter.engine);
 
-    engine_result = flutterpi->flutter.procs.MarkExternalTextureFrameAvailable(flutterpi->flutter.engine, texture_identifier);
+    engine_result = flutter_drm_embedder->flutter.procs.MarkExternalTextureFrameAvailable(flutter_drm_embedder->flutter.engine, texture_identifier);
     if (engine_result != kSuccess) {
         LOG_ERROR(
             "Error notifying flutter engine about new external texture frame. FlutterEngineMarkExternalTextureFrameAvailable: %s\n",
@@ -1322,7 +1322,7 @@ static FlutterEngine create_flutter_engine(
     memset(&platform_task_runner, 0, sizeof(platform_task_runner));
 
     platform_task_runner.struct_size = sizeof(FlutterTaskRunnerDescription);
-    platform_task_runner.user_data = flutterpi;
+    platform_task_runner.user_data = flutter_drm_embedder;
     platform_task_runner.runs_task_on_current_thread_callback = runs_platform_tasks_on_current_thread;
     platform_task_runner.post_task_callback = on_post_flutter_task;
 
@@ -1374,7 +1374,7 @@ static FlutterEngine create_flutter_engine(
     project_args.update_semantics_callback2 = NULL;
 
     // spin up the engine
-    engine_result = procs->Initialize(FLUTTER_ENGINE_VERSION, &renderer_config, &project_args, flutterpi, &engine);
+    engine_result = procs->Initialize(FLUTTER_ENGINE_VERSION, &renderer_config, &project_args, flutter_drm_embedder, &engine);
     if (engine_result != kSuccess) {
         LOG_ERROR("Could not initialize the flutter engine. FlutterEngineInitialize: %s\n", FLUTTER_RESULT_TO_STRING(engine_result));
         return NULL;
@@ -1383,18 +1383,18 @@ static FlutterEngine create_flutter_engine(
     return engine;
 }
 
-static int flutterpi_run(struct flutterpi *flutterpi) {
+static int flutter_drm_embedder_run(struct flutter_drm_embedder *flutter_drm_embedder) {
     FlutterEngineProcTable *procs;
     struct view_geometry geometry;
     FlutterEngineResult engine_result;
     FlutterEngine engine;
     int ok, evloop_fd;
 
-    procs = &flutterpi->flutter.procs;
+    procs = &flutter_drm_embedder->flutter.procs;
 
-    if (flutterpi->libseat != NULL) {
+    if (flutter_drm_embedder->libseat != NULL) {
 #ifdef HAVE_LIBSEAT
-        ok = libseat_dispatch(flutterpi->libseat, 0);
+        ok = libseat_dispatch(flutter_drm_embedder->libseat, 0);
         if (ok < 0) {
             LOG_ERROR("initial libseat dispatch failed. libseat_dispatch: %s\n", strerror(errno));
         }
@@ -1403,26 +1403,26 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
 #endif
     }
 
-    ok = plugin_registry_ensure_plugins_initialized(flutterpi->plugin_registry);
+    ok = plugin_registry_ensure_plugins_initialized(flutter_drm_embedder->plugin_registry);
     if (ok != 0) {
         LOG_ERROR("Could not initialize plugins.\n");
         return EINVAL;
     }
 
     engine = create_flutter_engine(
-        flutterpi->vk_renderer,
-        flutterpi->flutter.paths,
-        flutterpi->flutter.engine_argc,
-        flutterpi->flutter.engine_argv,
-        flutterpi->compositor,
-        flutterpi->flutter.aot_data,
-        &flutterpi->flutter.procs
+        flutter_drm_embedder->vk_renderer,
+        flutter_drm_embedder->flutter.paths,
+        flutter_drm_embedder->flutter.engine_argc,
+        flutter_drm_embedder->flutter.engine_argv,
+        flutter_drm_embedder->compositor,
+        flutter_drm_embedder->flutter.aot_data,
+        &flutter_drm_embedder->flutter.procs
     );
     if (engine == NULL) {
         return EINVAL;
     }
 
-    flutterpi->flutter.engine = engine;
+    flutter_drm_embedder->flutter.engine = engine;
 
     engine_result = procs->RunInitialized(engine);
     if (engine_result != kSuccess) {
@@ -1431,10 +1431,10 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
         goto fail_deinitialize_engine;
     }
 
-    extern void flutterpi_register_gtk_plugins(struct flutterpi *flutterpi);
-    flutterpi_register_gtk_plugins(flutterpi);
+    extern void flutter_drm_embedder_register_gtk_plugins(struct flutter_drm_embedder *flutter_drm_embedder);
+    flutter_drm_embedder_register_gtk_plugins(flutter_drm_embedder);
 
-    ok = locales_add_to_fl_engine(flutterpi->locales, engine, procs->UpdateLocales);
+    ok = locales_add_to_fl_engine(flutter_drm_embedder->locales, engine, procs->UpdateLocales);
     if (ok != 0) {
         goto fail_shutdown_engine;
     }
@@ -1445,7 +1445,7 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
     display.struct_size = sizeof(FlutterEngineDisplay);
     display.display_id = 0;
     display.single_display = true;
-    display.refresh_rate = compositor_get_refresh_rate(flutterpi->compositor);
+    display.refresh_rate = compositor_get_refresh_rate(flutter_drm_embedder->compositor);
 
     engine_result = procs->NotifyDisplayUpdate(engine, kFlutterEngineDisplaysUpdateTypeStartup, &display, 1);
     if (engine_result != kSuccess) {
@@ -1457,7 +1457,7 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
         goto fail_shutdown_engine;
     }
 
-    compositor_get_view_geometry(flutterpi->compositor, &geometry);
+    compositor_get_view_geometry(flutter_drm_embedder->compositor, &geometry);
 
     // just so we get an error if the window metrics event was expanded without us noticing
     FlutterWindowMetricsEvent window_metrics_event;
@@ -1484,17 +1484,17 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
         goto fail_shutdown_engine;
     }
 
-    pthread_mutex_lock(&flutterpi->event_loop_mutex);
+    pthread_mutex_lock(&flutter_drm_embedder->event_loop_mutex);
 
-    ok = sd_event_get_fd(flutterpi->event_loop);
+    ok = sd_event_get_fd(flutter_drm_embedder->event_loop);
     if (ok < 0) {
         ok = -ok;
         LOG_ERROR("Could not get fd for main event loop. sd_event_get_fd: %s\n", strerror(ok));
-        pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+        pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
         goto fail_shutdown_engine;
     }
 
-    pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+    pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
 
     evloop_fd = ok;
 
@@ -1510,13 +1510,13 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
 
         const fd_set const_fds = rfds;
 
-        pthread_mutex_lock(&flutterpi->event_loop_mutex);
+        pthread_mutex_lock(&flutter_drm_embedder->event_loop_mutex);
 
         do {
-            state = sd_event_get_state(flutterpi->event_loop);
+            state = sd_event_get_state(flutter_drm_embedder->event_loop);
             switch (state) {
                 case SD_EVENT_INITIAL:
-                    ok = sd_event_prepare(flutterpi->event_loop);
+                    ok = sd_event_prepare(flutter_drm_embedder->event_loop);
                     if (ok < 0) {
                         ok = -ok;
                         LOG_ERROR("Could not prepare event loop. sd_event_prepare: %s\n", strerror(ok));
@@ -1525,7 +1525,7 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
 
                     break;
                 case SD_EVENT_ARMED:
-                    pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+                    pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
 
                     do {
                         rfds = const_fds;
@@ -1539,9 +1539,9 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
                         }
                     } while ((ok < 0) && (errno == EINTR));
 
-                    pthread_mutex_lock(&flutterpi->event_loop_mutex);
+                    pthread_mutex_lock(&flutter_drm_embedder->event_loop_mutex);
 
-                    ok = sd_event_wait(flutterpi->event_loop, 0);
+                    ok = sd_event_wait(flutter_drm_embedder->event_loop, 0);
                     if (ok < 0) {
                         ok = -ok;
                         LOG_ERROR("Could not check for event loop events. sd_event_wait: %s\n", strerror(ok));
@@ -1550,7 +1550,7 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
 
                     break;
                 case SD_EVENT_PENDING:
-                    ok = sd_event_dispatch(flutterpi->event_loop);
+                    ok = sd_event_dispatch(flutter_drm_embedder->event_loop);
                     if (ok < 0) {
                         ok = -ok;
                         LOG_ERROR("Could not dispatch event loop events. sd_event_dispatch: %s\n", strerror(ok));
@@ -1563,39 +1563,39 @@ static int flutterpi_run(struct flutterpi *flutterpi) {
             }
         } while (state != SD_EVENT_FINISHED);
 
-        pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+        pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
     }
 
     // We deinitialize the plugins here so plugins don't attempt to use the
     // flutter engine anymore.
     // For example, otherwise the gstreamer video player might call
     // texture_push_frame in another thread.
-    plugin_registry_ensure_plugins_deinitialized(flutterpi->plugin_registry);
+    plugin_registry_ensure_plugins_deinitialized(flutter_drm_embedder->plugin_registry);
 
-    flutterpi->flutter.procs.Shutdown(engine);
-    flutterpi->flutter.engine = NULL;
+    flutter_drm_embedder->flutter.procs.Shutdown(engine);
+    flutter_drm_embedder->flutter.engine = NULL;
     return 0;
 
 fail_shutdown_engine:
-    flutterpi->flutter.procs.Shutdown(engine);
+    flutter_drm_embedder->flutter.procs.Shutdown(engine);
     return ok;
 
 fail_deinitialize_engine:
-    flutterpi->flutter.procs.Deinitialize(engine);
+    flutter_drm_embedder->flutter.procs.Deinitialize(engine);
     return ok;
 }
 
-void flutterpi_schedule_exit(struct flutterpi *flutterpi) {
+void flutter_drm_embedder_schedule_exit(struct flutter_drm_embedder *flutter_drm_embedder) {
     int ok;
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_lock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_lock(&flutter_drm_embedder->event_loop_mutex);
     }
 
     // There's a race condition here:
     //
-    // Other threads can always call flutterpi_post_platform_task(). We can only
-    // be sure flutterpi_post_platform_task() will not be called anymore when
+    // Other threads can always call flutter_drm_embedder_post_platform_task(). We can only
+    // be sure flutter_drm_embedder_post_platform_task() will not be called anymore when
     // FlutterEngineShutdown() has returned.
     //
     // However, FlutterEngineShutdown() is blocking and should be called on the
@@ -1608,17 +1608,17 @@ void flutterpi_schedule_exit(struct flutterpi *flutterpi) {
     //    leaks.
     //
     // There's not really a nice solution here, but we use the 2nd option here.
-    ok = sd_event_exit(flutterpi->event_loop, 0);
+    ok = sd_event_exit(flutter_drm_embedder->event_loop, 0);
     if (ok < 0) {
         LOG_ERROR("Could not schedule application exit. sd_event_exit: %s\n", strerror(-ok));
-        if (pthread_self() != flutterpi->event_loop_thread) {
-            pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+        if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+            pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
         }
         return;
     }
 
-    if (pthread_self() != flutterpi->event_loop_thread) {
-        pthread_mutex_unlock(&flutterpi->event_loop_mutex);
+    if (pthread_self() != flutter_drm_embedder->event_loop_thread) {
+        pthread_mutex_unlock(&flutter_drm_embedder->event_loop_mutex);
     }
 
     return;
@@ -1629,89 +1629,89 @@ void flutterpi_schedule_exit(struct flutterpi *flutterpi) {
  **************/
 static void on_flutter_pointer_event(void *userdata, const FlutterPointerEvent *events, size_t n_events) {
     FlutterEngineResult engine_result;
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
+    flutter_drm_embedder = userdata;
 
     /// TODO: make this atomic
-    flutterpi->flutter.next_frame_request_is_secondary = true;
+    flutter_drm_embedder->flutter.next_frame_request_is_secondary = true;
 
-    engine_result = flutterpi->flutter.procs.SendPointerEvent(flutterpi->flutter.engine, events, n_events);
+    engine_result = flutter_drm_embedder->flutter.procs.SendPointerEvent(flutter_drm_embedder->flutter.engine, events, n_events);
     if (engine_result != kSuccess) {
         LOG_ERROR(
             "Error sending touchscreen / mouse events to flutter. FlutterEngineSendPointerEvent: %s\n",
             FLUTTER_RESULT_TO_STRING(engine_result)
         );
-        //flutterpi_schedule_exit(flutterpi);
+        //flutter_drm_embedder_schedule_exit(flutter_drm_embedder);
     }
 }
 
 static void on_utf8_character(void *userdata, uint8_t *character) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     int ok;
 
-    flutterpi = userdata;
+    flutter_drm_embedder = userdata;
 
-    (void) flutterpi;
+    (void) flutter_drm_embedder;
 
 #ifdef BUILD_TEXT_INPUT_PLUGIN
     ok = textin_on_utf8_char(character);
     if (ok != 0) {
         LOG_ERROR("Error handling keyboard event. textin_on_utf8_char: %s\n", strerror(ok));
-        //flutterpi_schedule_exit(flutterpi);
+        //flutter_drm_embedder_schedule_exit(flutter_drm_embedder);
     }
 #endif
 }
 
 static void on_xkb_keysym(void *userdata, xkb_keysym_t keysym) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     int ok;
 
-    flutterpi = userdata;
-    (void) flutterpi;
+    flutter_drm_embedder = userdata;
+    (void) flutter_drm_embedder;
 
 #ifdef BUILD_TEXT_INPUT_PLUGIN
     ok = textin_on_xkb_keysym(keysym);
     if (ok != 0) {
         LOG_ERROR("Error handling keyboard event. textin_on_xkb_keysym: %s\n", strerror(ok));
-        //flutterpi_schedule_exit(flutterpi);
+        //flutter_drm_embedder_schedule_exit(flutter_drm_embedder);
     }
 #endif
 }
 
 static void
 on_gtk_keyevent(void *userdata, uint32_t unicode_scalar_values, uint32_t key_code, uint32_t scan_code, uint32_t modifiers, bool is_down) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     int ok;
 
-    flutterpi = userdata;
-    (void) flutterpi;
+    flutter_drm_embedder = userdata;
+    (void) flutter_drm_embedder;
 
 #ifdef BUILD_RAW_KEYBOARD_PLUGIN
     ok = rawkb_send_gtk_keyevent(unicode_scalar_values, key_code, scan_code, modifiers, is_down);
     if (ok != 0) {
         LOG_ERROR("Error handling keyboard event. rawkb_send_gtk_keyevent: %s\n", strerror(ok));
-        //flutterpi_schedule_exit(flutterpi);
+        //flutter_drm_embedder_schedule_exit(flutter_drm_embedder);
     }
 #endif
 }
 
 static void on_switch_vt(void *userdata, int vt) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    (void) flutterpi;
+    flutter_drm_embedder = userdata;
+    (void) flutter_drm_embedder;
     (void) vt;
 
     LOG_DEBUG("on_switch_vt(%d)\n", vt);
 
-    if (flutterpi->libseat != NULL) {
+    if (flutter_drm_embedder->libseat != NULL) {
 #ifdef HAVE_LIBSEAT
         int ok;
 
-        ok = libseat_switch_session(flutterpi->libseat, vt);
+        ok = libseat_switch_session(flutter_drm_embedder->libseat, vt);
         if (ok < 0) {
             LOG_ERROR("Could not switch session. libseat_switch_session: %s\n", strerror(errno));
         }
@@ -1722,37 +1722,37 @@ static void on_switch_vt(void *userdata, int vt) {
 }
 
 static void on_set_cursor_enabled(void *userdata, bool enabled) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
-    flutterpi = userdata;
-    (void) flutterpi;
+    flutter_drm_embedder = userdata;
+    (void) flutter_drm_embedder;
 
-    compositor_set_cursor(flutterpi->compositor, true, enabled, false, POINTER_KIND_NONE, false, VEC2F(0, 0));
+    compositor_set_cursor(flutter_drm_embedder->compositor, true, enabled, false, POINTER_KIND_NONE, false, VEC2F(0, 0));
 }
 
 static void on_move_cursor(void *userdata, struct vec2f delta) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 
-    flutterpi = userdata;
+    flutter_drm_embedder = userdata;
 
-    compositor_set_cursor(flutterpi->compositor, true, true, false, POINTER_KIND_NONE, true, delta);
+    compositor_set_cursor(flutter_drm_embedder->compositor, true, true, false, POINTER_KIND_NONE, true, delta);
 }
 
 static int on_user_input_open(const char *path, int flags, void *userdata) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     int ok, fd;
 
     ASSERT_NOT_NULL(path);
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    (void) flutterpi;
+    flutter_drm_embedder = userdata;
+    (void) flutter_drm_embedder;
 
-    if (flutterpi->libseat != NULL) {
+    if (flutter_drm_embedder->libseat != NULL) {
 #ifdef HAVE_LIBSEAT
         struct device_id_and_fd *entry;
         int device_id;
 
-        ok = libseat_open_device(flutterpi->libseat, path, &fd);
+        ok = libseat_open_device(flutter_drm_embedder->libseat, path, &fd);
         if (ok < 0) {
             ok = errno;
             LOG_ERROR("Couldn't open evdev device. libseat_open_device: %s\n", strerror(ok));
@@ -1763,7 +1763,7 @@ static int on_user_input_open(const char *path, int flags, void *userdata) {
 
         entry = malloc(sizeof *entry);
         if (entry == NULL) {
-            libseat_close_device(flutterpi->libseat, device_id);
+            libseat_close_device(flutter_drm_embedder->libseat, device_id);
             return -ENOMEM;
         }
 
@@ -1771,7 +1771,7 @@ static int on_user_input_open(const char *path, int flags, void *userdata) {
         entry->fd = fd;
         entry->device_id = device_id;
 
-        list_add(&entry->entry, &flutterpi->fd_for_device_id);
+        list_add(&entry->entry, &flutter_drm_embedder->fd_for_device_id);
         return fd;
 #else
         UNREACHABLE();
@@ -1790,18 +1790,18 @@ static int on_user_input_open(const char *path, int flags, void *userdata) {
 }
 
 static void on_user_input_close(int fd, void *userdata) {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     int ok;
 
     ASSERT_NOT_NULL(userdata);
-    flutterpi = userdata;
-    (void) flutterpi;
+    flutter_drm_embedder = userdata;
+    (void) flutter_drm_embedder;
 
-    if (flutterpi->libseat != NULL) {
+    if (flutter_drm_embedder->libseat != NULL) {
 #ifdef HAVE_LIBSEAT
         struct device_id_and_fd *entry = NULL;
 
-        list_for_each_entry_safe(struct device_id_and_fd, entry_iter, &flutterpi->fd_for_device_id, entry) {
+        list_for_each_entry_safe(struct device_id_and_fd, entry_iter, &flutter_drm_embedder->fd_for_device_id, entry) {
             if (entry_iter->fd == fd) {
                 entry = entry_iter;
                 break;
@@ -1813,7 +1813,7 @@ static void on_user_input_close(int fd, void *userdata) {
             return;
         }
 
-        ok = libseat_close_device(flutterpi->libseat, entry->device_id);
+        ok = libseat_close_device(flutter_drm_embedder->libseat, entry->device_id);
         if (ok < 0) {
             LOG_ERROR("Couldn't close evdev device. libseat_close_device: %s\n", strerror(errno));
         }
@@ -1846,7 +1846,7 @@ static int on_user_input_fd_ready(sd_event_source *s, int fd, uint32_t revents, 
 
 static struct flutter_paths *setup_paths(enum flutter_runtime_mode runtime_mode, const char *app_bundle_path) {
 #if defined(FILESYSTEM_LAYOUT_DEFAULT)
-    return fs_layout_flutterpi_resolve(app_bundle_path, runtime_mode);
+    return fs_layout_flutter_drm_embedder_resolve(app_bundle_path, runtime_mode);
 #elif defined(FILESYSTEM_LAYOUT_METAFLUTTER)
     return fs_layout_metaflutter_resolve(app_bundle_path, runtime_mode);
 #else
@@ -1866,7 +1866,7 @@ static bool parse_vec2i(const char *str, struct vec2i *out) {
     return true;
 }
 
-bool flutterpi_parse_cmdline_args(int argc, char **argv, struct flutterpi_cmdline_args *result_out) {
+bool flutter_drm_embedder_parse_cmdline_args(int argc, char **argv, struct flutter_drm_embedder_cmdline_args *result_out) {
     bool finished_parsing_options;
     int runtime_mode_int = FLUTTER_RUNTIME_MODE_DEBUG;
     int vulkan_int = false;
@@ -2066,14 +2066,14 @@ valid_format:
     return true;
 }
 
-void flutterpi_set_gtk_plugin_loader(struct flutterpi *flutterpi, struct gtk_plugin_loader *loader) {
-    ASSERT_NOT_NULL(flutterpi);
-    flutterpi->gtk_plugin_loader = loader;
+void flutter_drm_embedder_set_gtk_plugin_loader(struct flutter_drm_embedder *flutter_drm_embedder, struct gtk_plugin_loader *loader) {
+    ASSERT_NOT_NULL(flutter_drm_embedder);
+    flutter_drm_embedder->gtk_plugin_loader = loader;
 }
 
-struct gtk_plugin_loader *flutterpi_get_gtk_plugin_loader(struct flutterpi *flutterpi) {
-    ASSERT_NOT_NULL(flutterpi);
-    return flutterpi->gtk_plugin_loader;
+struct gtk_plugin_loader *flutter_drm_embedder_get_gtk_plugin_loader(struct flutter_drm_embedder *flutter_drm_embedder) {
+    ASSERT_NOT_NULL(flutter_drm_embedder);
+    return flutter_drm_embedder->gtk_plugin_loader;
 }
 
 static int on_drmdev_open(const char *path, int flags, void **fd_metadata_out, void *userdata) {
@@ -2228,7 +2228,7 @@ found_connected_connector:
 
     if (drmdev == NULL) {
         LOG_ERROR(
-            "flutter-pi couldn't find a usable DRM device.\n"
+            "flutter-drm-embedder couldn't find a usable DRM device.\n"
             "Please make sure you've enabled the Fake-KMS driver in raspi-config.\n"
             "If you're not using a Raspberry Pi, please make sure there's KMS support for your graphics chip.\n"
         );
@@ -2289,7 +2289,7 @@ static struct gbm_device *open_rendernode_as_gbm_device() {
 
     if (gbm == NULL) {
         LOG_ERROR(
-            "flutter-pi couldn't find a usable render device.\n"
+            "flutter-drm-embedder couldn't find a usable render device.\n"
             "Please make sure you have a GPU connected.\n"
         );
         return NULL;
@@ -2300,7 +2300,7 @@ static struct gbm_device *open_rendernode_as_gbm_device() {
 
 #ifdef HAVE_LIBSEAT
 static void on_session_enable(struct libseat *seat, void *userdata) {
-    struct flutterpi *fpi;
+    struct flutter_drm_embedder *fpi;
     int ok;
 
     ASSERT_NOT_NULL(seat);
@@ -2330,7 +2330,7 @@ static void on_session_enable(struct libseat *seat, void *userdata) {
 }
 
 static void on_session_disable(struct libseat *seat, void *userdata) {
-    struct flutterpi *fpi;
+    struct flutter_drm_embedder *fpi;
 
     ASSERT_NOT_NULL(seat);
     ASSERT_NOT_NULL(userdata);
@@ -2354,7 +2354,7 @@ static void on_session_disable(struct libseat *seat, void *userdata) {
 }
 
 static int on_libseat_fd_ready(sd_event_source *s, int fd, uint32_t revents, void *userdata) {
-    struct flutterpi *fpi;
+    struct flutter_drm_embedder *fpi;
     int ok;
 
     ASSERT_NOT_NULL(s);
@@ -2373,7 +2373,7 @@ static int on_libseat_fd_ready(sd_event_source *s, int fd, uint32_t revents, voi
 }
 #endif
 
-struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
+struct flutter_drm_embedder *flutter_drm_embedder_new_from_args(int argc, char **argv) {
     enum flutter_runtime_mode runtime_mode;
     enum renderer_type renderer_type;
     struct texture_registry *texture_registry;
@@ -2388,9 +2388,9 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
     struct gbm_device *gbm_device;
     struct user_input *input;
     struct compositor *compositor;
-    struct flutterpi *fpi;
+    struct flutter_drm_embedder *fpi;
     struct sd_event *event_loop;
-    struct flutterpi_cmdline_args cmd_args;
+    struct flutter_drm_embedder_cmdline_args cmd_args;
     struct libseat *libseat;
     struct locales *locales;
     struct drmdev *drmdev;
@@ -2406,16 +2406,16 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
     }
 
     /// TODO: Remove this
-    flutterpi = fpi;
+    flutter_drm_embedder = fpi;
 
-    ok = flutterpi_parse_cmdline_args(argc, argv, &cmd_args);
+    ok = flutter_drm_embedder_parse_cmdline_args(argc, argv, &cmd_args);
     if (ok == false) {
         goto fail_free_fpi;
     }
 
 #ifndef HAVE_VULKAN
     if (cmd_args.use_vulkan == true) {
-        LOG_ERROR("ERROR: --vulkan was specified, but flutter-pi was built without vulkan support.\n");
+        LOG_ERROR("ERROR: --vulkan was specified, but flutter-drm-embedder was built without vulkan support.\n");
         printf("%s", usage);
         return NULL;
     }
@@ -2472,14 +2472,14 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
 
     libseat = libseat_open_seat(&libseat_interface, fpi);
     if (libseat == NULL) {
-        LOG_DEBUG("Couldn't open libseat. Flutter-pi will run without session switching support. libseat_open_seat: %s\n", strerror(errno));
+        LOG_DEBUG("Couldn't open libseat. Flutter-drm-embedder will run without session switching support. libseat_open_seat: %s\n", strerror(errno));
     }
 
     if (libseat != NULL) {
         ok = libseat_get_fd(libseat);
         if (ok < 0) {
             LOG_ERROR(
-                "Couldn't get an event fd from libseat. Flutter-pi will run without session switching support. libseat_get_fd: %s\n",
+                "Couldn't get an event fd from libseat. Flutter-drm-embedder will run without session switching support. libseat_get_fd: %s\n",
                 strerror(errno)
             );
             libseat_close_seat(libseat);
@@ -2491,7 +2491,7 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
         ok = sd_event_add_io(event_loop, NULL, ok, EPOLLIN, on_libseat_fd_ready, fpi);
         if (ok < 0) {
             LOG_ERROR(
-                "Couldn't listen for libseat events. Flutter-pi will run without session switching support. sd_event_add_io: %s\n",
+                "Couldn't listen for libseat events. Flutter-drm-embedder will run without session switching support. sd_event_add_io: %s\n",
                 strerror(-ok)
             );
             libseat_close_seat(libseat);
@@ -2528,7 +2528,7 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
     } else {
         if(cmd_args.has_drm_fd){
             LOG_KMS_DEBUG("Using user-provided DRM fd=%d\n", cmd_args.drm_fd);
-            /* --drm-fd is passed, we don't want flutter-pi to handle the DRM choice */
+            /* --drm-fd is passed, we don't want flutter-drm-embedder to handle the DRM choice */
             drmdev = drmdev_new_from_interface_fd(cmd_args.drm_fd, NULL, &drmdev_interface, libseat);
         }
         else{
@@ -2581,12 +2581,12 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
 
         // it seems that after some Raspbian update, regular users are sometimes no longer allowed
         //   to use the direct-rendering infrastructure; i.e. the open the devices inside /dev/dri/
-        //   as read-write. flutter-pi must be run as root then.
+        //   as read-write. flutter-drm-embedder must be run as root then.
         // sometimes it works fine without root, sometimes it doesn't.
         if (gl_renderer_is_llvmpipe(gl_renderer)) {
             LOG_ERROR_UNPREFIXED(
                 "WARNING: Detected llvmpipe (ie. software rendering) as the OpenGL ES renderer.\n"
-                "         Check that flutter-pi has permission to use the 3D graphics hardware,\n"
+                "         Check that flutter-drm-embedder has permission to use the 3D graphics hardware,\n"
                 "         or try running it as root.\n"
                 "         This warning will probably result in a \"failed to set mode\" error\n"
                 "         later on in the initialization.\n"
@@ -2682,7 +2682,7 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
         geometry.display_size.y
     );
     if (input == NULL) {
-        LOG_ERROR("Couldn't initialize user input. flutter-pi will run without user input.\n");
+        LOG_ERROR("Couldn't initialize user input. flutter-drm-embedder will run without user input.\n");
     } else {
         sd_event_source *user_input_event_source;
 
@@ -2695,7 +2695,7 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
             input
         );
         if (ok < 0) {
-            LOG_ERROR("Couldn't listen for user input. flutter-pi will run without user input. sd_event_add_io: %s\n", strerror(-ok));
+            LOG_ERROR("Couldn't listen for user input. flutter-drm-embedder will run without user input. sd_event_add_io: %s\n", strerror(-ok));
             user_input_destroy(input);
             input = NULL;
         }
@@ -2750,18 +2750,18 @@ struct flutterpi *flutterpi_new_from_args(int argc, char **argv) {
     bool engine_is_aot = fpi->flutter.procs.RunsAOTCompiledDartCode();
     if (engine_is_aot == true && !FLUTTER_RUNTIME_MODE_IS_AOT(runtime_mode)) {
         LOG_ERROR(
-            "The flutter engine was built for release or profile (AOT) mode, but flutter-pi was not started up in release or profile "
+            "The flutter engine was built for release or profile (AOT) mode, but flutter-drm-embedder was not started up in release or profile "
             "mode.\n"
             "Either you swap out the libflutter_engine.so with one that was built for debug mode, or you start"
-            "flutter-pi with the --release or --profile flag and make sure a valid \"app.so\" is located inside the asset bundle "
+            "flutter-drm-embedder with the --release or --profile flag and make sure a valid \"app.so\" is located inside the asset bundle "
             "directory.\n"
         );
         goto fail_destroy_texture_registry;
     } else if (engine_is_aot == false && FLUTTER_RUNTIME_MODE_IS_AOT(runtime_mode)) {
         LOG_ERROR(
-            "The flutter engine was built for debug mode, but flutter-pi was started up in release mode.\n"
+            "The flutter engine was built for debug mode, but flutter-drm-embedder was started up in release mode.\n"
             "Either you swap out the libflutter_engine.so with one that was built for release mode,"
-            "or you start flutter-pi without the --release flag.\n"
+            "or you start flutter-drm-embedder without the --release flag.\n"
         );
         goto fail_destroy_texture_registry;
     }
@@ -2878,69 +2878,69 @@ fail_free_fpi:
     return NULL;
 }
 
-void flutterpi_destroy(struct flutterpi *flutterpi) {
-    (void) flutterpi;
+void flutter_drm_embedder_destroy(struct flutter_drm_embedder *flutter_drm_embedder) {
+    (void) flutter_drm_embedder;
     LOG_DEBUG("deinit\n");
 
-    pthread_mutex_destroy(&flutterpi->event_loop_mutex);
-    texture_registry_destroy(flutterpi->texture_registry);
-    plugin_registry_destroy(flutterpi->plugin_registry);
-    gtk_plugin_loader_destroy(flutterpi->gtk_plugin_loader);
-    unload_flutter_engine_lib(flutterpi->flutter.engine_handle);
-    user_input_destroy(flutterpi->user_input);
-    compositor_unref(flutterpi->compositor);
-    if (flutterpi->gl_renderer) {
+    pthread_mutex_destroy(&flutter_drm_embedder->event_loop_mutex);
+    texture_registry_destroy(flutter_drm_embedder->texture_registry);
+    plugin_registry_destroy(flutter_drm_embedder->plugin_registry);
+    gtk_plugin_loader_destroy(flutter_drm_embedder->gtk_plugin_loader);
+    unload_flutter_engine_lib(flutter_drm_embedder->flutter.engine_handle);
+    user_input_destroy(flutter_drm_embedder->user_input);
+    compositor_unref(flutter_drm_embedder->compositor);
+    if (flutter_drm_embedder->gl_renderer) {
 #ifdef HAVE_EGL_GLES2
-        gl_renderer_unref(flutterpi->gl_renderer);
+        gl_renderer_unref(flutter_drm_embedder->gl_renderer);
 #else
         UNREACHABLE();
 #endif
     }
-    if (flutterpi->vk_renderer) {
+    if (flutter_drm_embedder->vk_renderer) {
 #ifdef HAVE_VULKAN
-        vk_renderer_unref(flutterpi->vk_renderer);
+        vk_renderer_unref(flutter_drm_embedder->vk_renderer);
 #else
         UNREACHABLE();
 #endif
     }
-    tracer_unref(flutterpi->tracer);
-    drmdev_unref(flutterpi->drmdev);
-    locales_destroy(flutterpi->locales);
-    if (flutterpi->libseat != NULL) {
+    tracer_unref(flutter_drm_embedder->tracer);
+    drmdev_unref(flutter_drm_embedder->drmdev);
+    locales_destroy(flutter_drm_embedder->locales);
+    if (flutter_drm_embedder->libseat != NULL) {
 #ifdef HAVE_LIBSEAT
-        libseat_close_seat(flutterpi->libseat);
+        libseat_close_seat(flutter_drm_embedder->libseat);
 #else
         UNREACHABLE();
 #endif
     }
-    sd_event_unrefp(&flutterpi->event_loop);
-    close(flutterpi->wakeup_event_loop_fd);
-    flutter_paths_free(flutterpi->flutter.paths);
-    free(flutterpi->flutter.bundle_path);
-    free(flutterpi);
+    sd_event_unrefp(&flutter_drm_embedder->event_loop);
+    close(flutter_drm_embedder->wakeup_event_loop_fd);
+    flutter_paths_free(flutter_drm_embedder->flutter.paths);
+    free(flutter_drm_embedder->flutter.bundle_path);
+    free(flutter_drm_embedder);
     return;
 }
 
-int flutterpi_app_main(int argc, char **argv) {
-    struct flutterpi *flutterpi;
+int flutter_drm_embedder_app_main(int argc, char **argv) {
+    struct flutter_drm_embedder *flutter_drm_embedder;
     int ok;
 
 #ifdef ENABLE_MTRACE
     mtrace();
 #endif
 
-    flutterpi = flutterpi_new_from_args(argc, argv);
-    if (flutterpi == NULL) {
+    flutter_drm_embedder = flutter_drm_embedder_new_from_args(argc, argv);
+    if (flutter_drm_embedder == NULL) {
         return EXIT_FAILURE;
     }
 
-    ok = flutterpi_run(flutterpi);
+    ok = flutter_drm_embedder_run(flutter_drm_embedder);
     if (ok != 0) {
-        flutterpi_destroy(flutterpi);
+        flutter_drm_embedder_destroy(flutter_drm_embedder);
         return EXIT_FAILURE;
     }
 
-    flutterpi_destroy(flutterpi);
+    flutter_drm_embedder_destroy(flutter_drm_embedder);
 
     return EXIT_SUCCESS;
 }

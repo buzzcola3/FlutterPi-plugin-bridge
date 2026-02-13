@@ -24,7 +24,7 @@
 
 #include "cursor.h"
 #include "dummy_render_surface.h"
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "frame_scheduler.h"
 #include "modesetting.h"
 #include "notifier_listener.h"

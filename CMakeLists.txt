@@ -51,14 +51,14 @@ option(TRY_ENABLE_VULKAN "Don't throw an error if vulkan isn't found, instead ju
 set(VULKAN_DEBUG "AUTO" CACHE STRING "Enable vulkan validation layers and verbose vulkan logging. (ON/OFF/AUTO)")
 set_property(CACHE VULKAN_DEBUG PROPERTY STRINGS ON OFF AUTO)
 option(ENABLE_SOFTWARE "Build with software rendering support." ON)
-option(DUMP_ENGINE_LAYERS "True if flutter-pi should dump the list of rendering layers that the flutter engine sends to flutter-pi on each draw." OFF)
+option(DUMP_ENGINE_LAYERS "True if flutter-drm-embedder should dump the list of rendering layers that the flutter engine sends to flutter-drm-embedder on each draw." OFF)
 option(WARN_MISSING_FIELD_INITIALIZERS "True of the compiler should be instructed to warn about missing field initializers. This needs some hacky workarounds in the code so gcc won't report spurious warnings, so this should only be enabled if the warnings are explicitly required." OFF)
 option(ENABLE_TSAN "True to build & link with -fsanitize=thread" OFF)
 option(ENABLE_ASAN "True to build & link with -fsanitize=address" OFF)
 option(ENABLE_UBSAN "True to build & link with -fsanitize=undefined" OFF)
-option(ENABLE_MTRACE "True if flutter-pi should call GNU mtrace() on startup." OFF)
+option(ENABLE_MTRACE "True if flutter-drm-embedder should call GNU mtrace() on startup." OFF)
 option(ENABLE_TESTS "True if tests should be built. Requires Unity to be checked out at third_party/Unity." OFF)
-option(ENABLE_SESSION_SWITCHING "True if flutter-pi should be built with session switching support. Requires libseat-dev to be installed." ON)
+option(ENABLE_SESSION_SWITCHING "True if flutter-drm-embedder should be built with session switching support. Requires libseat-dev to be installed." ON)
 option(TRY_ENABLE_SESSION_SWITCHING "Don't throw an error if libseat isn't found, instead just build without session switching support in that case." ON)
 option(LTO "Check for IPO/LTO support and enable, if supported. May require gold/lld when building with clang. (Either using `-fuse-ld` in CMAKE_C_FLAGS or by setting as the default system linker.) Only applies to Release or RelWithDebInfo build types." ON)
 option(LINT_EGL_HEADERS "Set an define that'll make the egl.h only export the extension definitions, prototypes that are explicitly marked as required." OFF)
@@ -73,7 +73,7 @@ set(FILESYSTEM_LAYOUT "default" CACHE STRING "Where to look for the icudtl.dat, 
 set_property(CACHE FILESYSTEM_LAYOUT PROPERTY STRINGS ${FILESYSTEM_LAYOUTS})
 
 set(SENTRY_BACKEND "crashpad" CACHE STRING "What sentry backend to use, when the sentry plugin is built. Allowed values are inproc, crashpad and breakpad.")
-option(SENTRY_PLUGIN_BUNDLE_CRASHPAD_HANDLER "Bundle the crashpad_handler with the flutter-pi executable." ON)
+option(SENTRY_PLUGIN_BUNDLE_CRASHPAD_HANDLER "Bundle the crashpad_handler with the flutter-drm-embedder executable." ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -83,12 +83,12 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if (BUILD_SENTRY_PLUGIN)
-  set(flutterpi_languages C CXX ASM)
+  set(flutter_drm_embedder_languages C CXX ASM)
 else()
-  set(flutterpi_languages C ASM)
+  set(flutter_drm_embedder_languages C ASM)
 endif()
 
-project(flutter-pi LANGUAGES ${flutterpi_languages} VERSION "1.0.0")
+project(flutter-drm-embedder LANGUAGES ${flutter_drm_embedder_languages} VERSION "1.0.0")
 
 if (BUILD_OPENAUTOFLUTTER_PLUGIN)
   enable_language(CXX)
@@ -128,18 +128,18 @@ endif()
 
 message(STATUS "PIE .................... ${CMAKE_POSITION_INDEPENDENT_CODE}")
 
-# flutter-pi executable
+# flutter-drm-embedder executable
 add_executable(
-  flutter-pi
+  flutter-drm-embedder
   src/main.c
 )
 
-# flutterpi_module
-# We separate the actual flutter-pi code into a separate object library
+# flutter_drm_embedder_module
+# We separate the actual flutter-drm-embedder code into a separate object library
 # so we can link against it in the tests.
 add_library(
-  flutterpi_module OBJECT
-  src/flutter-pi.c
+  flutter_drm_embedder_module OBJECT
+  src/flutter-drm-embedder.c
   src/platformchannel.c
   src/pluginregistry.c
   src/texture_registry.c
@@ -166,15 +166,15 @@ add_library(
 )
 
 if (BUILD_OPENAUTOFLUTTER_PLUGIN)
-  target_sources(flutterpi_module PRIVATE src/flutter_linux_gtk_shim/openautoflutter_registrant.c)
+  target_sources(flutter_drm_embedder_module PRIVATE src/flutter_linux_gtk_shim/openautoflutter_registrant.c)
 endif()
 
 if (BUILD_GTK_SHIM_TEST_PLUGIN)
-  target_sources(flutterpi_module PRIVATE src/flutter_linux_gtk_shim/shim_test_plugin.c)
-  target_compile_definitions(flutterpi_module PUBLIC BUILD_GTK_SHIM_TEST_PLUGIN)
+  target_sources(flutter_drm_embedder_module PRIVATE src/flutter_linux_gtk_shim/shim_test_plugin.c)
+  target_compile_definitions(flutter_drm_embedder_module PUBLIC BUILD_GTK_SHIM_TEST_PLUGIN)
 endif()
 
-target_link_libraries(flutterpi_module PUBLIC
+target_link_libraries(flutter_drm_embedder_module PUBLIC
   PkgConfig::DRM
   PkgConfig::GBM
   PkgConfig::LIBSYSTEMD
@@ -186,28 +186,28 @@ target_link_libraries(flutterpi_module PUBLIC
   rt m atomic
 )
 
-target_include_directories(flutterpi_module PUBLIC
+target_include_directories(flutter_drm_embedder_module PUBLIC
   ${CMAKE_SOURCE_DIR}/third_party/flutter_embedder_header/include
   ${CMAKE_SOURCE_DIR}/src
   ${CMAKE_BINARY_DIR}
 )
 
 if (BUILD_OPENAUTOFLUTTER_PLUGIN)
-  target_include_directories(flutterpi_module PUBLIC
+  target_include_directories(flutter_drm_embedder_module PUBLIC
     ${CMAKE_SOURCE_DIR}/third_party/flutter_linux_gtk_shim/include
     ${OPENAUTOFLUTTER_DIR}/linux/include
   )
-  target_link_libraries(flutterpi_module PUBLIC
+  target_link_libraries(flutter_drm_embedder_module PUBLIC
     PkgConfig::GLIB
     PkgConfig::GOBJECT
     PkgConfig::GIO
   )
   if (GTK_FOUND)
-    target_link_libraries(flutterpi_module PUBLIC PkgConfig::GTK)
+    target_link_libraries(flutter_drm_embedder_module PUBLIC PkgConfig::GTK)
   endif()
 endif()
 
-target_compile_options(flutterpi_module PUBLIC
+target_compile_options(flutter_drm_embedder_module PUBLIC
   $<$<CONFIG:Debug>:-O0 -Wall -Wextra -Wno-sign-compare -Werror -ggdb -U_FORTIFY_SOURCE -DDEBUG>
   $<$<CONFIG:RelWithDebInfo>:-O3 -Wall -Wextra -Wno-sign-compare -ggdb -DNDEBUG>
   $<$<CONFIG:Release>:-O3 -Wall -Wextra -Wno-sign-compare -DNDEBUG>
@@ -265,8 +265,8 @@ target_compile_options(flutter_linux_gtk_shim PUBLIC
 
 
 
-target_link_libraries(flutter-pi PUBLIC flutter_linux_gtk_shim)
-target_link_options(flutter-pi PUBLIC LINKER:--export-dynamic)
+target_link_libraries(flutter-drm-embedder PUBLIC flutter_linux_gtk_shim)
+target_link_options(flutter-drm-embedder PUBLIC LINKER:--export-dynamic)
 
 # OpenAutoFlutter plugin build (uses GTK-style shim)
 if (BUILD_OPENAUTOFLUTTER_PLUGIN)
@@ -377,17 +377,17 @@ if (BUILD_OPENAUTOFLUTTER_PLUGIN)
     target_link_libraries(openautoflutter_plugin PRIVATE ${AVCODEC_LIB} ${AVUTIL_LIB} ${SWSCALE_LIB})
   endif()
 
-  target_link_libraries(flutter-pi PUBLIC openautoflutter_plugin)
+  target_link_libraries(flutter-drm-embedder PUBLIC openautoflutter_plugin)
 endif()
 
 # GCC prior to 11.3 reports false positives for missing-field-initializers warning.
 if (CMAKE_C_COMPILER_ID STREQUAL "GNU")
   if (CMAKE_C_COMPILER_VERSION VERSION_LESS "11.3")
-    target_compile_options(flutterpi_module PUBLIC -Wno-missing-field-initializers)
+    target_compile_options(flutter_drm_embedder_module PUBLIC -Wno-missing-field-initializers)
   endif()
-  target_link_options(flutter-pi PUBLIC LINKER:--build-id)
+  target_link_options(flutter-drm-embedder PUBLIC LINKER:--build-id)
 elseif (CMAKE_C_COMPILER_ID STREQUAL "Clang")
-  target_link_options(flutter-pi PUBLIC LINKER:--build-id=sha1)
+  target_link_options(flutter-drm-embedder PUBLIC LINKER:--build-id=sha1)
 endif()
 
 # libinput stuff
@@ -412,11 +412,11 @@ pkg_check_modules(EGL IMPORTED_TARGET egl)
 pkg_check_modules(GLES2 IMPORTED_TARGET glesv2)
 if (ENABLE_OPENGL)
   if (EGL_FOUND AND GLES2_FOUND)
-    target_sources(flutterpi_module PRIVATE
+    target_sources(flutter_drm_embedder_module PRIVATE
       src/egl_gbm_render_surface.c
       src/gl_renderer.c
     )
-    target_link_libraries(flutterpi_module PUBLIC
+    target_link_libraries(flutter_drm_embedder_module PUBLIC
       PkgConfig::EGL
       PkgConfig::GLES2
     )
@@ -425,7 +425,7 @@ if (ENABLE_OPENGL)
     set(HAVE_GLES2 ON)
     set(HAVE_EGL_GLES2 ON)
   elseif (TRY_ENABLE_OPENGL)
-    message("EGL and/or OpenGL was not found. Flutter-pi will build without EGL/OpenGL rendering support.")
+    message("EGL and/or OpenGL was not found. Flutter-drm-embedder will build without EGL/OpenGL rendering support.")
   else()
     message(SEND_ERROR "EGL and/or OpenGL was not found. Try building with `-DTRY_ENABLE_OPENGL=On` if you want to just disable EGL/OpenGL support in that case.")
   endif()
@@ -441,17 +441,17 @@ set(HAVE_VULKAN OFF)
 pkg_check_modules(VULKAN IMPORTED_TARGET vulkan)
 if (ENABLE_VULKAN)
   if (VULKAN_FOUND)
-    target_sources(flutterpi_module PRIVATE
+    target_sources(flutter_drm_embedder_module PRIVATE
       src/vk_gbm_render_surface.c
       src/vk_renderer.c
     )
-    target_link_libraries(flutterpi_module PUBLIC
+    target_link_libraries(flutter_drm_embedder_module PUBLIC
       PkgConfig::VULKAN
     )
 
     set(HAVE_VULKAN ON)
   elseif (TRY_ENABLE_VULKAN)
-    message("Vulkan was not found. Flutter-pi will build without vulkan rendering support.")
+    message("Vulkan was not found. Flutter-drm-embedder will build without vulkan rendering support.")
   else()
     message(SEND_ERROR "Vulkan was not found. Try building with `-DTRY_ENABLE_VULKAN=On` if you want to just disable vulkan support in that case.")
   endif()
@@ -465,7 +465,7 @@ if (NOT HAVE_VULKAN AND NOT HAVE_EGL_GLES2)
 endif()
 
 # Filesystem Layout
-# meta-flutter or normal flutter-pi.
+# meta-flutter or normal flutter-drm-embedder.
 # see src/filesystem_layout.c for details.
 if(NOT FILESYSTEM_LAYOUT IN_LIST FILESYSTEM_LAYOUTS)
   message(FATAL_ERROR "FILESYSTEM_LAYOUT must be one of ${FILESYSTEM_LAYOUTS}")
@@ -491,10 +491,10 @@ if (ENABLE_SESSION_SWITCHING)
   endif()
 
   if (LIBSEAT_FOUND)
-    target_link_libraries(flutterpi_module PUBLIC PkgConfig::LIBSEAT)
+    target_link_libraries(flutter_drm_embedder_module PUBLIC PkgConfig::LIBSEAT)
     set(HAVE_LIBSEAT ON)
   else()
-    message("libseat was not found. flutter-pi will be built without session switching support.")
+    message("libseat was not found. flutter-drm-embedder will be built without session switching support.")
   endif()
 endif()
 
@@ -502,15 +502,15 @@ message(STATUS "Session switching ...... ${HAVE_LIBSEAT}")
 
 # TODO: We actually don't need the compile definitions anymore, except for
 # text input and raw keyboard plugin (because those have special treatment
-# in flutter-pi.c)
+# in flutter-drm-embedder.c)
 if (BUILD_TEXT_INPUT_PLUGIN)
-  target_sources(flutterpi_module PRIVATE src/plugins/text_input.c)
+  target_sources(flutter_drm_embedder_module PRIVATE src/plugins/text_input.c)
 endif()
 if (BUILD_RAW_KEYBOARD_PLUGIN)
-  target_sources(flutterpi_module PRIVATE src/plugins/raw_keyboard.c)
+  target_sources(flutter_drm_embedder_module PRIVATE src/plugins/raw_keyboard.c)
 endif()
 if (BUILD_TEST_PLUGIN)
-  target_sources(flutterpi_module PRIVATE src/plugins/testplugin.c)
+  target_sources(flutter_drm_embedder_module PRIVATE src/plugins/testplugin.c)
 endif()
 if (BUILD_GSTREAMER_VIDEO_PLAYER_PLUGIN)
   if (NOT HAVE_EGL_GLES2)
@@ -538,12 +538,12 @@ if (BUILD_GSTREAMER_VIDEO_PLAYER_PLUGIN)
       list(GET LIBGSTREAMER_VERSION_AS_LIST 1 LIBGSTREAMER_VERSION_MINOR)
       list(GET LIBGSTREAMER_VERSION_AS_LIST 2 LIBGSTREAMER_VERSION_PATCH)
 
-      target_sources(flutterpi_module PRIVATE
+      target_sources(flutter_drm_embedder_module PRIVATE
         src/plugins/gstreamer_video_player/plugin.c
         src/plugins/gstreamer_video_player/player.c
         src/plugins/gstreamer_video_player/frame.c
       )
-      target_link_libraries(flutterpi_module PUBLIC
+      target_link_libraries(flutter_drm_embedder_module PUBLIC
         PkgConfig::LIBGSTREAMER
         PkgConfig::LIBGSTREAMER_PLUGINS_BASE
         PkgConfig::LIBGSTREAMER_APP
@@ -568,11 +568,11 @@ if (BUILD_GSTREAMER_AUDIO_PLAYER_PLUGIN)
   endif()
 
   if (LIBGSTREAMER_FOUND AND LIBGSTREAMER_APP_FOUND AND LIBGSTREAMER_AUDIO_FOUND)
-    target_sources(flutterpi_module PRIVATE
+    target_sources(flutter_drm_embedder_module PRIVATE
       src/plugins/audioplayers/plugin.c
       src/plugins/audioplayers/player.c
     )
-    target_link_libraries(flutterpi_module PUBLIC
+    target_link_libraries(flutter_drm_embedder_module PUBLIC
       PkgConfig::LIBGSTREAMER
       PkgConfig::LIBGSTREAMER_APP
       PkgConfig::LIBGSTREAMER_AUDIO
@@ -583,7 +583,7 @@ if (BUILD_GSTREAMER_AUDIO_PLAYER_PLUGIN)
 endif()
 
 if (BUILD_CHARSET_CONVERTER_PLUGIN)
-  target_sources(flutterpi_module PRIVATE src/plugins/charset_converter.c)
+  target_sources(flutter_drm_embedder_module PRIVATE src/plugins/charset_converter.c)
 endif()
 
 # Sentry Plugin
@@ -592,17 +592,17 @@ if (BUILD_SENTRY_PLUGIN)
   set(SENTRY_PIC ${CMAKE_POSITION_INDEPENDENT_CODE} CACHE BOOL "")
   add_subdirectory(third_party/sentry-native)
 
-  target_sources(flutterpi_module PRIVATE src/plugins/sentry/sentry.c)
-  target_link_libraries(flutterpi_module PUBLIC sentry::sentry)
+  target_sources(flutter_drm_embedder_module PRIVATE src/plugins/sentry/sentry.c)
+  target_link_libraries(flutter_drm_embedder_module PUBLIC sentry::sentry)
 
   if (SENTRY_BACKEND STREQUAL "crashpad" AND SENTRY_PLUGIN_BUNDLE_CRASHPAD_HANDLER)
     set(HAVE_BUNDLED_CRASHPAD_HANDLER ON)
   
-    target_sources(flutter-pi PRIVATE src/crashpad_handler_trampoline.cc)
+    target_sources(flutter-drm-embedder PRIVATE src/crashpad_handler_trampoline.cc)
     # link against the same libraries the crashpad_handler uses
     
     get_target_property(handler_deps crashpad_handler INTERFACE_LINK_LIBRARIES)
-    target_link_libraries(flutter-pi PUBLIC ${handler_deps})
+    target_link_libraries(flutter-drm-embedder PUBLIC ${handler_deps})
   endif()
 endif()
 message(STATUS "Sentry plugin .......... ${BUILD_SENTRY_PLUGIN}")
@@ -610,7 +610,7 @@ message(STATUS "Bundle crashpad_handler  ${HAVE_BUNDLED_CRASHPAD_HANDLER}")
 
 # Needed so dart VM can actually resolve symbols in the same
 # executable. (For dart:ffi DynamicLibrary.executable / DynamicLibrary.process)
-target_link_options(flutterpi_module PUBLIC -rdynamic)
+target_link_options(flutter_drm_embedder_module PUBLIC -rdynamic)
 
 # Define VULKAN_DEBUG if it was set to On, or if it was set to AUTO and we're using debug mode.
 if (VULKAN_DEBUG MATCHES AUTO)
@@ -627,8 +627,8 @@ endif()
 
 # Some sanitizer configs.
 if (ENABLE_TSAN)
-  target_link_options(flutterpi_module PUBLIC -fsanitize=thread)
-  target_compile_options(flutterpi_module PUBLIC -fsanitize=thread)
+  target_link_options(flutter_drm_embedder_module PUBLIC -fsanitize=thread)
+  target_compile_options(flutter_drm_embedder_module PUBLIC -fsanitize=thread)
 endif()
 if (ENABLE_ASAN)
   # when we use asan, we need to force linking against the C++ stdlib.
@@ -636,18 +636,18 @@ if (ENABLE_ASAN)
   # and something in the dynamically loaded library triggers asan, it'll throw an error because it hasn't
   # intercepted stdc++ yet.
   # Also disable --as-needed so we _actually_ link against c++, even though we don't use any symbols from it.
-  target_link_libraries(flutterpi_module PUBLIC stdc++)
-  target_link_options(flutterpi_module PUBLIC -fsanitize=address -fno-omit-frame-pointer -Wl,--no-as-needed)
-  target_compile_options(flutterpi_module PUBLIC -fsanitize=address)
+  target_link_libraries(flutter_drm_embedder_module PUBLIC stdc++)
+  target_link_options(flutter_drm_embedder_module PUBLIC -fsanitize=address -fno-omit-frame-pointer -Wl,--no-as-needed)
+  target_compile_options(flutter_drm_embedder_module PUBLIC -fsanitize=address)
 
   check_c_compiler_flag(-static-libasan HAVE_STATIC_LIBASAN)
   if (HAVE_STATIC_LIBASAN)
-    target_link_options(flutterpi_module PUBLIC -static-libasan)
+    target_link_options(flutter_drm_embedder_module PUBLIC -static-libasan)
   endif()
 endif()
 if (ENABLE_UBSAN)
-  target_link_options(flutterpi_module PUBLIC -fsanitize=undefined)
-  target_compile_options(flutterpi_module PUBLIC -fsanitize=undefined)
+  target_link_options(flutter_drm_embedder_module PUBLIC -fsanitize=undefined)
+  target_compile_options(flutter_drm_embedder_module PUBLIC -fsanitize=undefined)
 endif()
 
 configure_file(config.h.in config.h @ONLY)
@@ -656,16 +656,16 @@ configure_file(config.h.in config.h @ONLY)
 # is mapping `../src/` to `` always gonna work?
 check_c_compiler_flag(-fmacro-prefix-map=.=. COMPILER_SUPPORTS_MACRO_PREFIX_MAP)
 if (COMPILER_SUPPORTS_MACRO_PREFIX_MAP)
-  target_compile_options(flutterpi_module PRIVATE "-fmacro-prefix-map=../src/=")
-  target_compile_options(flutterpi_module PRIVATE "-fmacro-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}/src/=")
+  target_compile_options(flutter_drm_embedder_module PRIVATE "-fmacro-prefix-map=../src/=")
+  target_compile_options(flutter_drm_embedder_module PRIVATE "-fmacro-prefix-map=${CMAKE_CURRENT_SOURCE_DIR}/src/=")
 endif()
 
-# Actual flutter-pi executable.
+# Actual flutter-drm-embedder executable.
 target_link_libraries(
-  flutter-pi PUBLIC
-  flutterpi_module
+  flutter-drm-embedder PUBLIC
+  flutter_drm_embedder_module
 )
-install(TARGETS flutter-pi RUNTIME DESTINATION bin)
+install(TARGETS flutter-drm-embedder RUNTIME DESTINATION bin)
 install(TARGETS flutter_linux_gtk_shim LIBRARY DESTINATION bin)
 
 # Enable lto if supported.
@@ -738,15 +738,15 @@ endif()
 
 message(STATUS "IPO/LTO ................ ${USE_LTO}")
 if (USE_LTO)
-  set_property(TARGET flutterpi_module PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-  set_property(TARGET flutter-pi PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+  set_property(TARGET flutter_drm_embedder_module PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+  set_property(TARGET flutter-drm-embedder PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
   # if (NEEDS_GOLD)
   #   Technically specifying only for one would suffice.
-  #   target_link_options(flutterpi_module PUBLIC "-fuse-ld=gold")
-  #   target_link_options(flutter-pi PUBLIC "-fuse-ld=gold")
+  #   target_link_options(flutter_drm_embedder_module PUBLIC "-fuse-ld=gold")
+  #   target_link_options(flutter-drm-embedder PUBLIC "-fuse-ld=gold")
   # elseif (NEEDS_LLD)
-  #   target_link_options(flutterpi_module PUBLIC "-fuse-ld=lld")
-  #   target_link_options(flutter-pi PUBLIC "-fuse-ld=lld")
+  #   target_link_options(flutter_drm_embedder_module PUBLIC "-fuse-ld=lld")
+  #   target_link_options(flutter-drm-embedder PUBLIC "-fuse-ld=lld")
   # endif()
 endif()
 

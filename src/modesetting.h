@@ -9,8 +9,8 @@
  * Copyright (c) 2022, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_MODESETTING_H
-#define _FLUTTERPI_SRC_MODESETTING_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_MODESETTING_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_MODESETTING_H
 
 #include <stdbool.h>
 
@@ -574,7 +574,7 @@ struct drm_plane {
         /// of each added drm fb.
         ///
         /// But for foreign framebuffers, i.e. the ones that are set on
-        /// the plane by fbcon when flutter-pi is starting up, we simply can't
+        /// the plane by fbcon when flutter-drm-embedder is starting up, we simply can't
         /// tell.
         ///
         /// We need to know though because we need to call @ref drmModeSetCrtc
@@ -956,4 +956,4 @@ drmModeModeInfo *__next_mode(const struct drm_connector *connector, const drmMod
 
 #define for_each_unreserved_plane_in_atomic_req(atomic_req, plane) for_each_pointer_in_pset(&(atomic_req)->available_planes, plane)
 
-#endif  // _FLUTTERPI_SRC_MODESETTING_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_MODESETTING_H

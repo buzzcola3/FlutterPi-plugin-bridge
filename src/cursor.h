@@ -8,8 +8,8 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_CURSOR_H
-#define _FLUTTERPI_SRC_CURSOR_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_CURSOR_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_CURSOR_H
 
 #include <stdint.h>
 
@@ -68,4 +68,4 @@ struct vec2i pointer_icon_get_hotspot(const struct pointer_icon *icon);
 
 void *pointer_icon_dup_pixels(const struct pointer_icon *icon);
 
-#endif  // _FLUTTERPI_SRC_CURSOR_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_CURSOR_H

@@ -5,10 +5,10 @@
  * Copyright (c) 2023, Hannes Winkler <hanneswinkler2000@web.de>
  */
 
-#ifndef _FLUTTERPI_SRC_FLUTTERPI_H
-#define _FLUTTERPI_SRC_FLUTTERPI_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_FLUTTER_DRM_EMBEDDER_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_FLUTTER_DRM_EMBEDDER_H
 
-#define LOG_FLUTTERPI_ERROR(...) fprintf(stderr, "[flutter-pi] " __VA_ARGS__)
+#define LOG_FLUTTER_DRM_EMBEDDER_ERROR(...) fprintf(stderr, "[flutter-drm-embedder] " __VA_ARGS__)
 
 #include <ctype.h>
 #include <limits.h>
@@ -91,11 +91,11 @@ struct texture_registry;
 struct drmdev;
 struct locales;
 struct vk_renderer;
-struct flutterpi;
+struct flutter_drm_embedder;
 struct gtk_plugin_loader;
 
 /// TODO: Remove this
-extern struct flutterpi *flutterpi;
+extern struct flutter_drm_embedder *flutter_drm_embedder;
 
 struct platform_task {
     int (*callback)(void *userdata);
@@ -115,7 +115,7 @@ struct platform_message {
     size_t message_size;
 };
 
-struct flutterpi_cmdline_args {
+struct flutter_drm_embedder_cmdline_args {
     bool has_orientation;
     enum device_orientation orientation;
 
@@ -149,62 +149,62 @@ struct flutterpi_cmdline_args {
     bool debug_kms;
 };
 
-int flutterpi_fill_view_properties(bool has_orientation, enum device_orientation orientation, bool has_rotation, int rotation);
+int flutter_drm_embedder_fill_view_properties(bool has_orientation, enum device_orientation orientation, bool has_rotation, int rotation);
 
-int flutterpi_post_platform_task(int (*callback)(void *userdata), void *userdata);
+int flutter_drm_embedder_post_platform_task(int (*callback)(void *userdata), void *userdata);
 
-int flutterpi_post_platform_task_with_time(int (*callback)(void *userdata), void *userdata, uint64_t target_time_usec);
+int flutter_drm_embedder_post_platform_task_with_time(int (*callback)(void *userdata), void *userdata, uint64_t target_time_usec);
 
-int flutterpi_sd_event_add_io(sd_event_source **source_out, int fd, uint32_t events, sd_event_io_handler_t callback, void *userdata);
+int flutter_drm_embedder_sd_event_add_io(sd_event_source **source_out, int fd, uint32_t events, sd_event_io_handler_t callback, void *userdata);
 
-int flutterpi_send_platform_message(
-    struct flutterpi *flutterpi,
+int flutter_drm_embedder_send_platform_message(
+    struct flutter_drm_embedder *flutter_drm_embedder,
     const char *channel,
     const uint8_t *restrict message,
     size_t message_size,
     FlutterPlatformMessageResponseHandle *responsehandle
 );
 
-int flutterpi_respond_to_platform_message(
+int flutter_drm_embedder_respond_to_platform_message(
     const FlutterPlatformMessageResponseHandle *handle,
     const uint8_t *restrict message,
     size_t message_size
 );
 
-bool flutterpi_parse_cmdline_args(int argc, char **argv, struct flutterpi_cmdline_args *result_out);
+bool flutter_drm_embedder_parse_cmdline_args(int argc, char **argv, struct flutter_drm_embedder_cmdline_args *result_out);
 
-void flutterpi_set_gtk_plugin_loader(struct flutterpi *flutterpi, struct gtk_plugin_loader *loader);
-struct gtk_plugin_loader *flutterpi_get_gtk_plugin_loader(struct flutterpi *flutterpi);
+void flutter_drm_embedder_set_gtk_plugin_loader(struct flutter_drm_embedder *flutter_drm_embedder, struct gtk_plugin_loader *loader);
+struct gtk_plugin_loader *flutter_drm_embedder_get_gtk_plugin_loader(struct flutter_drm_embedder *flutter_drm_embedder);
 
-struct texture_registry *flutterpi_get_texture_registry(struct flutterpi *flutterpi);
+struct texture_registry *flutter_drm_embedder_get_texture_registry(struct flutter_drm_embedder *flutter_drm_embedder);
 
-struct plugin_registry *flutterpi_get_plugin_registry(struct flutterpi *flutterpi);
+struct plugin_registry *flutter_drm_embedder_get_plugin_registry(struct flutter_drm_embedder *flutter_drm_embedder);
 
 FlutterPlatformMessageResponseHandle *
-flutterpi_create_platform_message_response_handle(struct flutterpi *flutterpi, FlutterDataCallback data_callback, void *userdata);
+flutter_drm_embedder_create_platform_message_response_handle(struct flutter_drm_embedder *flutter_drm_embedder, FlutterDataCallback data_callback, void *userdata);
 
-void flutterpi_release_platform_message_response_handle(struct flutterpi *flutterpi, FlutterPlatformMessageResponseHandle *handle);
+void flutter_drm_embedder_release_platform_message_response_handle(struct flutter_drm_embedder *flutter_drm_embedder, FlutterPlatformMessageResponseHandle *handle);
 
-struct texture *flutterpi_create_texture(struct flutterpi *flutterpi);
+struct texture *flutter_drm_embedder_create_texture(struct flutter_drm_embedder *flutter_drm_embedder);
 
-const char *flutterpi_get_asset_bundle_path(struct flutterpi *flutterpi);
+const char *flutter_drm_embedder_get_asset_bundle_path(struct flutter_drm_embedder *flutter_drm_embedder);
 
-const char *flutterpi_get_bundle_path(struct flutterpi *flutterpi);
+const char *flutter_drm_embedder_get_bundle_path(struct flutter_drm_embedder *flutter_drm_embedder);
 
-void flutterpi_schedule_exit(struct flutterpi *flutterpi);
+void flutter_drm_embedder_schedule_exit(struct flutter_drm_embedder *flutter_drm_embedder);
 
-struct gbm_device *flutterpi_get_gbm_device(struct flutterpi *flutterpi);
+struct gbm_device *flutter_drm_embedder_get_gbm_device(struct flutter_drm_embedder *flutter_drm_embedder);
 
-bool flutterpi_has_gl_renderer(struct flutterpi *flutterpi);
+bool flutter_drm_embedder_has_gl_renderer(struct flutter_drm_embedder *flutter_drm_embedder);
 
-struct gl_renderer *flutterpi_get_gl_renderer(struct flutterpi *flutterpi);
+struct gl_renderer *flutter_drm_embedder_get_gl_renderer(struct flutter_drm_embedder *flutter_drm_embedder);
 
-void flutterpi_set_pointer_kind(struct flutterpi *flutterpi, enum pointer_kind kind);
+void flutter_drm_embedder_set_pointer_kind(struct flutter_drm_embedder *flutter_drm_embedder, enum pointer_kind kind);
 
-void flutterpi_trace_event_instant(struct flutterpi *flutterpi, const char *name);
+void flutter_drm_embedder_trace_event_instant(struct flutter_drm_embedder *flutter_drm_embedder, const char *name);
 
-void flutterpi_trace_event_begin(struct flutterpi *flutterpi, const char *name);
+void flutter_drm_embedder_trace_event_begin(struct flutter_drm_embedder *flutter_drm_embedder, const char *name);
 
-void flutterpi_trace_event_end(struct flutterpi *flutterpi, const char *name);
+void flutter_drm_embedder_trace_event_end(struct flutter_drm_embedder *flutter_drm_embedder, const char *name);
 
-#endif  // _FLUTTERPI_SRC_FLUTTERPI_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_FLUTTER_DRM_EMBEDDER_H

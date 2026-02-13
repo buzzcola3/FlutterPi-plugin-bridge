@@ -10,7 +10,7 @@
 #include <gst/gst.h>
 #include <gst/video/video-info.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "notifier_listener.h"
 #include "platformchannel.h"
 #include "pluginregistry.h"
@@ -49,7 +49,7 @@ struct gstplayer_meta {
 static struct plugin {
     pthread_mutex_t lock;
 
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     bool initialized;
     struct list_head players;
 } plugin;
@@ -226,7 +226,7 @@ static int respond_init_failed(FlutterPlatformMessageResponseHandle *handle) {
     return platch_respond_error_pigeon(
         handle,
         "couldnotinit",
-        "gstreamer video player plugin failed to initialize gstreamer. See flutter-pi log for details.",
+        "gstreamer video player plugin failed to initialize gstreamer. See flutter-drm-embedder log for details.",
         NULL
     );
 }
@@ -235,7 +235,7 @@ static int respond_init_failed_v2(FlutterPlatformMessageResponseHandle *handle) 
     return platch_respond_error_std(
         handle,
         "couldnotinit",
-        "gstreamer video player plugin failed to initialize gstreamer. See flutter-pi log for details.",
+        "gstreamer video player plugin failed to initialize gstreamer. See flutter-drm-embedder log for details.",
         NULL
     );
 }
@@ -622,9 +622,9 @@ invalid_format_hint:
 
     // create our actual player (this doesn't initialize it)
     if (asset != NULL) {
-        player = gstplayer_new_from_asset(flutterpi, asset, package_name, NULL);
+        player = gstplayer_new_from_asset(flutter_drm_embedder, asset, package_name, NULL);
     } else {
-        player = gstplayer_new_from_network(flutterpi, uri, format_hint, NULL);
+        player = gstplayer_new_from_network(flutter_drm_embedder, uri, format_hint, NULL);
     }
     if (player == NULL) {
         LOG_ERROR("Couldn't create gstreamer video player.\n");
@@ -1194,20 +1194,20 @@ invalid_headers:
 
     // Create our actual player (this doesn't initialize it)
     if (asset != NULL) {
-        player = gstplayer_new_from_asset(flutterpi, asset, package_name, NULL);
+        player = gstplayer_new_from_asset(flutter_drm_embedder, asset, package_name, NULL);
 
         // gstplayer_new_from_network will construct a file:// URI out of the
         // asset path internally.
         free(asset);
         asset = NULL;
     } else if (uri != NULL) {
-        player = gstplayer_new_from_network(flutterpi, uri, format_hint, NULL);
+        player = gstplayer_new_from_network(flutter_drm_embedder, uri, format_hint, NULL);
 
         // gstplayer_new_from_network will dup the uri internally.
         free(uri);
         uri = NULL;
     } else if (pipeline != NULL) {
-        player = gstplayer_new_from_pipeline(flutterpi, pipeline, NULL);
+        player = gstplayer_new_from_pipeline(flutter_drm_embedder, pipeline, NULL);
 
         // gstplayer_new_from_network will dup the pipeline internally.
         free(pipeline);
@@ -1588,12 +1588,12 @@ static int on_receive_method_channel_v2(char *channel, struct platch_obj *object
     }
 }
 
-enum plugin_init_result gstplayer_plugin_init(struct flutterpi *flutterpi, void **userdata_out) {
+enum plugin_init_result gstplayer_plugin_init(struct flutter_drm_embedder *flutter_drm_embedder, void **userdata_out) {
     int ok;
 
     (void) userdata_out;
 
-    plugin.flutterpi = flutterpi;
+    plugin.flutter_drm_embedder = flutter_drm_embedder;
     plugin.initialized = false;
 
     ok = pthread_mutex_init(&plugin.lock, get_default_mutex_attrs());
@@ -1675,7 +1675,7 @@ enum plugin_init_result gstplayer_plugin_init(struct flutterpi *flutterpi, void 
         goto fail_remove_setMixWithOthers_receiver;
     }
 
-    ok = plugin_registry_set_receiver_locked("flutter-pi/gstreamerVideoPlayer", kBinaryCodec, on_receive_method_channel_v2);
+    ok = plugin_registry_set_receiver_locked("flutter-drm-embedder/gstreamerVideoPlayer", kBinaryCodec, on_receive_method_channel_v2);
     if (ok != 0) {
         goto fail_remove_advancedControls_receiver;
     }
@@ -1723,8 +1723,8 @@ fail_destroy_lock:
     return PLUGIN_INIT_RESULT_ERROR;
 }
 
-void gstplayer_plugin_deinit(struct flutterpi *flutterpi, void *userdata) {
-    (void) flutterpi;
+void gstplayer_plugin_deinit(struct flutter_drm_embedder *flutter_drm_embedder, void *userdata) {
+    (void) flutter_drm_embedder;
     (void) userdata;
 
     plugin_lock(&plugin);
@@ -1741,7 +1741,7 @@ void gstplayer_plugin_deinit(struct flutterpi *flutterpi, void *userdata) {
 
     plugin_unlock(&plugin);
 
-    plugin_registry_remove_receiver_locked("flutter-pi/gstreamerVideoPlayer");
+    plugin_registry_remove_receiver_locked("flutter-drm-embedder/gstreamerVideoPlayer");
     plugin_registry_remove_receiver_locked("flutter.io/videoPlayer/gstreamerVideoPlayer/advancedControls");
     plugin_registry_remove_receiver_locked("dev.flutter.pigeon.VideoPlayerApi.setMixWithOthers");
     plugin_registry_remove_receiver_locked("dev.flutter.pigeon.VideoPlayerApi.pause");
@@ -1757,4 +1757,4 @@ void gstplayer_plugin_deinit(struct flutterpi *flutterpi, void *userdata) {
     pthread_mutex_destroy(&plugin.lock);
 }
 
-FLUTTERPI_PLUGIN("gstreamer video_player", gstplayer, gstplayer_plugin_init, gstplayer_plugin_deinit)
+FLUTTER_DRM_EMBEDDER_PLUGIN("gstreamer video_player", gstplayer, gstplayer_plugin_init, gstplayer_plugin_deinit)

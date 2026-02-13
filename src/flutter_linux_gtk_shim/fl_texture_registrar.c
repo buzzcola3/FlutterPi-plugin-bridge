@@ -4,7 +4,7 @@
 #include "fl_texture_registrar_internal.h"
 
 #include <errno.h>
-#include "flutterpi_shim.h"
+#include "flutter_drm_embedder_shim.h"
 #include "texture_registry.h"
 #include "flutter_linux/fl_texture_gl.h"
 
@@ -14,7 +14,7 @@
 
 struct _FlTextureRegistrar {
     GObject parent_instance;
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
 };
 
 typedef struct {
@@ -78,13 +78,13 @@ static void fl_texture_init(FlTexture *self) {
     priv->texture = NULL;
 }
 
-FlTextureRegistrar *fl_texture_registrar_new_for_flutterpi(struct flutterpi *flutterpi) {
+FlTextureRegistrar *fl_texture_registrar_new_for_flutter_drm_embedder(struct flutter_drm_embedder *flutter_drm_embedder) {
     FlTextureRegistrar *registrar = g_object_new(FL_TYPE_TEXTURE_REGISTRAR, NULL);
-    registrar->flutterpi = flutterpi;
+    registrar->flutter_drm_embedder = flutter_drm_embedder;
     return registrar;
 }
 
-// TODO: Implement texture handling for flutter-pi in Phase 4.
+// TODO: Implement texture handling for flutter-drm-embedder in Phase 4.
 int64_t fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, FlTexture *texture) {
     g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), -1);
     g_return_val_if_fail(FL_IS_TEXTURE(texture), -1);
@@ -103,7 +103,7 @@ int64_t fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, FlT
         return priv->texture_id;
     }
 
-    struct texture *native_texture = flutterpi_create_texture(registrar->flutterpi);
+    struct texture *native_texture = flutter_drm_embedder_create_texture(registrar->flutter_drm_embedder);
     if (native_texture == NULL) {
         return -1;
     }

@@ -9,7 +9,7 @@
 
 #include <flutter_embedder.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "util/asserts.h"
 #include "util/collection.h"
 #include "util/list.h"

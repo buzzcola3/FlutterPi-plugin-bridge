@@ -16,7 +16,7 @@
 #include <systemd/sd-event.h>
 
 #include "compositor_ng.h"
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "keyboard.h"
 #include "util/collection.h"
 #include "util/logging.h"
@@ -296,7 +296,7 @@ struct user_input *user_input_new(
 
     udev = udev_new();
     if (udev == NULL) {
-        perror("[flutter-pi] Could not create udev instance. udev_new");
+        perror("[flutter-drm-embedder] Could not create udev instance. udev_new");
         goto fail_free_input;
     }
 
@@ -305,7 +305,7 @@ struct user_input *user_input_new(
 
     libinput = libinput_udev_create_context(&libinput_interface, input, udev);
     if (libinput == NULL) {
-        perror("[flutter-pi] Could not create libinput instance. libinput_udev_create_context");
+        perror("[flutter-drm-embedder] Could not create libinput instance. libinput_udev_create_context");
         goto fail_unref_udev;
     }
 
@@ -320,7 +320,7 @@ struct user_input *user_input_new(
 #ifdef BUILD_TEXT_INPUT_PLUGIN
     kbdcfg = keyboard_config_new();
     if (kbdcfg == NULL) {
-        LOG_ERROR("Could not initialize keyboard configuration. Flutter-pi will run without text/raw keyboard input.\n");
+        LOG_ERROR("Could not initialize keyboard configuration. Flutter-drm-embedder will run without text/raw keyboard input.\n");
     }
 #else
     kbdcfg = NULL;

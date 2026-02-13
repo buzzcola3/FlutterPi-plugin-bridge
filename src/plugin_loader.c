@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "util/logging.h"
 
 #include <flutter_linux/flutter_linux.h>
@@ -107,14 +107,14 @@ static char *build_symbol_name(const char *filename) {
     return symbol;
 }
 
-static char *get_plugins_dir(struct flutterpi *flutterpi) {
+static char *get_plugins_dir(struct flutter_drm_embedder *flutter_drm_embedder) {
     const char *bundle_path;
 
-    if (flutterpi == NULL) {
+    if (flutter_drm_embedder == NULL) {
         return NULL;
     }
 
-    bundle_path = flutterpi_get_bundle_path(flutterpi);
+    bundle_path = flutter_drm_embedder_get_bundle_path(flutter_drm_embedder);
     if (bundle_path == NULL) {
         return NULL;
     }
@@ -141,18 +141,18 @@ static bool ensure_handle_capacity(struct gtk_plugin_loader *loader) {
     return true;
 }
 
-struct gtk_plugin_loader *gtk_plugin_loader_load(struct flutterpi *flutterpi) {
+struct gtk_plugin_loader *gtk_plugin_loader_load(struct flutter_drm_embedder *flutter_drm_embedder) {
     struct gtk_plugin_loader *loader;
     struct dirent *entry;
     size_t found_count = 0;
     DIR *dir;
     char *plugins_dir;
 
-    if (flutterpi == NULL) {
+    if (flutter_drm_embedder == NULL) {
         return NULL;
     }
 
-    plugins_dir = get_plugins_dir(flutterpi);
+    plugins_dir = get_plugins_dir(flutter_drm_embedder);
     if (plugins_dir == NULL) {
         return NULL;
     }
@@ -220,7 +220,7 @@ struct gtk_plugin_loader *gtk_plugin_loader_load(struct flutterpi *flutterpi) {
             continue;
         }
 
-        FlPluginRegistrar *registrar = fl_plugin_registrar_new_for_flutterpi(flutterpi);
+        FlPluginRegistrar *registrar = fl_plugin_registrar_new_for_flutter_drm_embedder(flutter_drm_embedder);
         if (registrar == NULL) {
             LOG_ERROR("Failed to create GTK registrar for %s.\n", path);
             dlclose(handle);

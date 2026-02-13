@@ -4,7 +4,7 @@
 
 #include "config.h"
 
-int flutterpi_app_main(int argc, char **argv);
+int flutter_drm_embedder_app_main(int argc, char **argv);
 int crashpad_handler_main(int argc, char **argv);
 
 #ifdef HAVE_BUNDLED_CRASHPAD_HANDLER
@@ -26,5 +26,5 @@ int main(int argc, char **argv) {
     }
 #endif
 
-    return flutterpi_app_main(argc, argv);
+    return flutter_drm_embedder_app_main(argc, argv);
 }

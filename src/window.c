@@ -19,7 +19,7 @@
 
 #include "compositor_ng.h"
 #include "cursor.h"
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "frame_scheduler.h"
 #include "modesetting.h"
 #include "render_surface.h"
@@ -91,7 +91,7 @@ struct window {
      * @brief The size of the view, as reported to flutter, in pixels.
      *
      * If no rotation and scaling is applied, this probably equals the display size.
-     * For example, if flutter-pi should render at 1/2 the resolution of a full-hd display, this would be
+     * For example, if flutter-drm-embedder should render at 1/2 the resolution of a full-hd display, this would be
      * 960x540 and the display size 1920x1080.
      */
     struct vec2f view_size;

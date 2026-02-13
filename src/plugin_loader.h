@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: MIT
-#ifndef _FLUTTERPI_SRC_PLUGIN_LOADER_H
-#define _FLUTTERPI_SRC_PLUGIN_LOADER_H
+#ifndef _FLUTTER_DRM_EMBEDDER_SRC_PLUGIN_LOADER_H
+#define _FLUTTER_DRM_EMBEDDER_SRC_PLUGIN_LOADER_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct flutterpi;
+struct flutter_drm_embedder;
 struct gtk_plugin_loader;
 
-struct gtk_plugin_loader *gtk_plugin_loader_load(struct flutterpi *flutterpi);
+struct gtk_plugin_loader *gtk_plugin_loader_load(struct flutter_drm_embedder *flutter_drm_embedder);
 void gtk_plugin_loader_destroy(struct gtk_plugin_loader *loader);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // _FLUTTERPI_SRC_PLUGIN_LOADER_H
+#endif  // _FLUTTER_DRM_EMBEDDER_SRC_PLUGIN_LOADER_H

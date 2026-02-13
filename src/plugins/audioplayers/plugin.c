@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
 
-#include "flutter-pi.h"
+#include "flutter-drm-embedder.h"
 #include "platformchannel.h"
 #include "pluginregistry.h"
 #include "plugins/audioplayers.h"
@@ -20,7 +20,7 @@ struct audio_player_entry {
 };
 
 static struct plugin {
-    struct flutterpi *flutterpi;
+    struct flutter_drm_embedder *flutter_drm_embedder;
     bool initialized;
 
     struct list_head players;
@@ -234,12 +234,12 @@ static int on_receive_event_ch(char *channel, struct platch_obj *object, Flutter
     return 0;
 }
 
-enum plugin_init_result audioplayers_plugin_init(struct flutterpi *flutterpi, void **userdata_out) {
+enum plugin_init_result audioplayers_plugin_init(struct flutter_drm_embedder *flutter_drm_embedder, void **userdata_out) {
     int ok;
 
     (void) userdata_out;
 
-    plugin.flutterpi = flutterpi;
+    plugin.flutter_drm_embedder = flutter_drm_embedder;
     plugin.initialized = false;
     list_inithead(&plugin.players);
 
@@ -261,8 +261,8 @@ fail_remove_global_receiver:
     return PLUGIN_INIT_RESULT_ERROR;
 }
 
-void audioplayers_plugin_deinit(struct flutterpi *flutterpi, void *userdata) {
-    (void) flutterpi;
+void audioplayers_plugin_deinit(struct flutter_drm_embedder *flutter_drm_embedder, void *userdata) {
+    (void) flutter_drm_embedder;
     (void) userdata;
 
     plugin_registry_remove_receiver_locked(AUDIOPLAYERS_GLOBAL_CHANNEL);
@@ -330,4 +330,4 @@ static void audioplayers_linux_plugin_dispose_player(struct audio_player *player
     }
 }
 
-FLUTTERPI_PLUGIN("audioplayers", audioplayers, audioplayers_plugin_init, audioplayers_plugin_deinit)
+FLUTTER_DRM_EMBEDDER_PLUGIN("audioplayers", audioplayers, audioplayers_plugin_init, audioplayers_plugin_deinit)

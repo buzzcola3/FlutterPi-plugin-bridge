@@ -117,30 +117,30 @@ jobs:
       - name: Package
         run: |
           mkdir -p artifact && cd artifact
-          cp -r ../dist/bin/flutter-pi .
+          cp -r ../dist/bin/flutter-drm-embedder .
 
-          tar -cJf ../flutterpi-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz .
+          tar -cJf ../flutter-drm-embedder-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz .
 
           cd ..
           if [ -f dist/bin/libflutter_linux_gtk.so ]; then
             mkdir -p shim-artifact
             cp -r dist/bin/libflutter_linux_gtk.so shim-artifact/
-            tar -cJf flutterpi-gtk-shim-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz -C shim-artifact .
+            tar -cJf flutter-drm-embedder-gtk-shim-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz -C shim-artifact .
           fi
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: flutterpi-${{ matrix.target }}-${{ matrix.buildtype }}-tar-xz
-          path: flutterpi-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz
+          name: flutter-drm-embedder-${{ matrix.target }}-${{ matrix.buildtype }}-tar-xz
+          path: flutter-drm-embedder-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz
           if-no-files-found: error
 
       - name: Upload gtk shim artifact
-        if: ${{ hashFiles(format('flutterpi-gtk-shim-{0}-{1}.tar.xz', matrix.target, matrix.buildtype)) != '' }}
+        if: ${{ hashFiles(format('flutter-drm-embedder-gtk-shim-{0}-{1}.tar.xz', matrix.target, matrix.buildtype)) != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: flutterpi-gtk-shim-${{ matrix.target }}-${{ matrix.buildtype }}-tar-xz
-          path: flutterpi-gtk-shim-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz
+          name: flutter-drm-embedder-gtk-shim-${{ matrix.target }}-${{ matrix.buildtype }}-tar-xz
+          path: flutter-drm-embedder-gtk-shim-${{ matrix.target }}-${{ matrix.buildtype }}.tar.xz
           if-no-files-found: error
       
   publish:
