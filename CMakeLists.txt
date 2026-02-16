@@ -167,6 +167,7 @@ add_library(
 
 if (BUILD_OPENAUTOFLUTTER_PLUGIN)
   target_sources(flutter_drm_embedder_module PRIVATE src/flutter_linux_gtk_shim/openautoflutter_registrant.c)
+  target_compile_definitions(flutter_drm_embedder_module PUBLIC BUILD_OPENAUTOFLUTTER_PLUGIN)
 endif()
 
 if (BUILD_GTK_SHIM_TEST_PLUGIN)

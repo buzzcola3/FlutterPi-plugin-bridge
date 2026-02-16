@@ -30,7 +30,6 @@
 #include <features.h>
 #include <flutter_embedder.h>
 #include <gbm.h>
-#include <glib-object.h>
 #include <getopt.h>
 #include <langinfo.h>
 #include <libinput.h>
@@ -61,6 +60,10 @@
 #include "window.h"
 
 #include "config.h"
+
+#ifdef BUILD_OPENAUTOFLUTTER_PLUGIN
+    #include <glib-object.h>
+#endif
 
 #ifdef HAVE_LIBSEAT
     #include <libseat.h>
@@ -2902,7 +2905,9 @@ void flutter_drm_embedder_destroy(struct flutter_drm_embedder *flutter_drm_embed
     texture_registry_destroy(flutter_drm_embedder->texture_registry);
     plugin_registry_destroy(flutter_drm_embedder->plugin_registry);
     if (flutter_drm_embedder->fl_texture_registrar) {
+#ifdef BUILD_OPENAUTOFLUTTER_PLUGIN
         g_object_unref(flutter_drm_embedder->fl_texture_registrar);
+#endif
         flutter_drm_embedder->fl_texture_registrar = NULL;
     }
     gtk_plugin_loader_destroy(flutter_drm_embedder->gtk_plugin_loader);
