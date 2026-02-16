@@ -3,9 +3,15 @@
 
 #include <stdio.h>
 
+#include "config.h"
 #include "fl_plugin_registrar_internal.h"
 #include "flutter_drm_embedder_shim.h"
 #include "plugin_loader.h"
+
+__attribute__((constructor))
+static void fl_gtk_shim_init(void) {
+    fprintf(stderr, "libflutter_linux_gtk.so version %s loaded\n", FLUTTER_DRM_EMBEDDER_VERSION);
+}
 
 __attribute__((weak)) void fl_register_plugins(FlPluginRegistry *registry);
 
