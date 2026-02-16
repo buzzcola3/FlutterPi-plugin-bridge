@@ -17,9 +17,9 @@ struct _FlTextureClass {
     GObjectClass parent_class;
 };
 
-int64_t fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, FlTexture *texture);
-void fl_texture_registrar_unregister_texture(FlTextureRegistrar *registrar, FlTexture *texture);
-void fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *registrar, FlTexture *texture);
+gboolean fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, FlTexture *texture);
+gboolean fl_texture_registrar_unregister_texture(FlTextureRegistrar *registrar, FlTexture *texture);
+gboolean fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *registrar, FlTexture *texture);
 
 int64_t fl_texture_get_id(FlTexture *texture);
 

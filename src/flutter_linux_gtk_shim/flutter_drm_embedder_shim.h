@@ -35,4 +35,7 @@ struct texture *flutter_drm_embedder_create_texture(struct flutter_drm_embedder 
 void flutter_drm_embedder_set_gtk_plugin_loader(struct flutter_drm_embedder *flutter_drm_embedder, struct gtk_plugin_loader *loader);
 struct gtk_plugin_loader *flutter_drm_embedder_get_gtk_plugin_loader(struct flutter_drm_embedder *flutter_drm_embedder);
 
+void flutter_drm_embedder_set_fl_texture_registrar(struct flutter_drm_embedder *flutter_drm_embedder, void *registrar);
+void *flutter_drm_embedder_get_fl_texture_registrar(struct flutter_drm_embedder *flutter_drm_embedder);
+
 #endif  // FLUTTER_DRM_EMBEDDER_SHIM_H

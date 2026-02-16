@@ -84,39 +84,38 @@ FlTextureRegistrar *fl_texture_registrar_new_for_flutter_drm_embedder(struct flu
     return registrar;
 }
 
-// TODO: Implement texture handling for flutter-drm-embedder in Phase 4.
-int64_t fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, FlTexture *texture) {
-    g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), -1);
-    g_return_val_if_fail(FL_IS_TEXTURE(texture), -1);
+gboolean fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, FlTexture *texture) {
+    g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), FALSE);
+    g_return_val_if_fail(FL_IS_TEXTURE(texture), FALSE);
 
 #ifndef HAVE_EGL_GLES2
     (void) registrar;
     (void) texture;
-    return -1;
+    return FALSE;
 #else
     if (!FL_IS_TEXTURE_GL(texture)) {
-        return -1;
+        return FALSE;
     }
 
     FlTexturePrivate *priv = fl_texture_get_instance_private(texture);
     if (priv->texture != NULL) {
-        return priv->texture_id;
+        return TRUE;
     }
 
     struct texture *native_texture = flutter_drm_embedder_create_texture(registrar->flutter_drm_embedder);
     if (native_texture == NULL) {
-        return -1;
+        return FALSE;
     }
 
     priv->texture = native_texture;
     priv->texture_id = texture_get_id(native_texture);
-    return priv->texture_id;
+    return TRUE;
 #endif
 }
 
-void fl_texture_registrar_unregister_texture(FlTextureRegistrar *registrar, FlTexture *texture) {
-    g_return_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar));
-    g_return_if_fail(FL_IS_TEXTURE(texture));
+gboolean fl_texture_registrar_unregister_texture(FlTextureRegistrar *registrar, FlTexture *texture) {
+    g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), FALSE);
+    g_return_val_if_fail(FL_IS_TEXTURE(texture), FALSE);
 
     (void) registrar;
     FlTexturePrivate *priv = fl_texture_get_instance_private(texture);
@@ -125,18 +124,20 @@ void fl_texture_registrar_unregister_texture(FlTextureRegistrar *registrar, FlTe
         priv->texture = NULL;
         priv->texture_id = -1;
     }
+    return TRUE;
 }
 
-void fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *registrar, FlTexture *texture) {
-    g_return_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar));
-    g_return_if_fail(FL_IS_TEXTURE(texture));
+gboolean fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *registrar, FlTexture *texture) {
+    g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), FALSE);
+    g_return_val_if_fail(FL_IS_TEXTURE(texture), FALSE);
     (void) registrar;
 #ifndef HAVE_EGL_GLES2
     (void) texture;
+    return FALSE;
 #else
     FlTexturePrivate *priv = fl_texture_get_instance_private(texture);
     if (!priv->texture || !FL_IS_TEXTURE_GL(texture)) {
-        return;
+        return FALSE;
     }
 
     FlTextureGL *gl_texture = FL_TEXTURE_GL(texture);
@@ -149,6 +150,7 @@ void fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *regis
     };
 
     texture_push_unresolved_frame(priv->texture, &frame);
+    return TRUE;
 #endif
 }
 

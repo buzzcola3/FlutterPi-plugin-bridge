@@ -30,6 +30,7 @@
 #include <features.h>
 #include <flutter_embedder.h>
 #include <gbm.h>
+#include <glib-object.h>
 #include <getopt.h>
 #include <langinfo.h>
 #include <libinput.h>
@@ -252,6 +253,11 @@ struct flutter_drm_embedder {
     struct plugin_registry *plugin_registry;
 
     struct gtk_plugin_loader *gtk_plugin_loader;
+
+    /**
+     * @brief Shared FlTextureRegistrar for GTK-style plugins (lives as long as the embedder).
+     */
+    void *fl_texture_registrar;
 
     /**
      * @brief Manages all external textures registered to the flutter engine.
@@ -2076,6 +2082,16 @@ struct gtk_plugin_loader *flutter_drm_embedder_get_gtk_plugin_loader(struct flut
     return flutter_drm_embedder->gtk_plugin_loader;
 }
 
+void flutter_drm_embedder_set_fl_texture_registrar(struct flutter_drm_embedder *flutter_drm_embedder, void *registrar) {
+    ASSERT_NOT_NULL(flutter_drm_embedder);
+    flutter_drm_embedder->fl_texture_registrar = registrar;
+}
+
+void *flutter_drm_embedder_get_fl_texture_registrar(struct flutter_drm_embedder *flutter_drm_embedder) {
+    ASSERT_NOT_NULL(flutter_drm_embedder);
+    return flutter_drm_embedder->fl_texture_registrar;
+}
+
 static int on_drmdev_open(const char *path, int flags, void **fd_metadata_out, void *userdata) {
     int ok, fd, device_id;
 
@@ -2885,6 +2901,10 @@ void flutter_drm_embedder_destroy(struct flutter_drm_embedder *flutter_drm_embed
     pthread_mutex_destroy(&flutter_drm_embedder->event_loop_mutex);
     texture_registry_destroy(flutter_drm_embedder->texture_registry);
     plugin_registry_destroy(flutter_drm_embedder->plugin_registry);
+    if (flutter_drm_embedder->fl_texture_registrar) {
+        g_object_unref(flutter_drm_embedder->fl_texture_registrar);
+        flutter_drm_embedder->fl_texture_registrar = NULL;
+    }
     gtk_plugin_loader_destroy(flutter_drm_embedder->gtk_plugin_loader);
     unload_flutter_engine_lib(flutter_drm_embedder->flutter.engine_handle);
     user_input_destroy(flutter_drm_embedder->user_input);

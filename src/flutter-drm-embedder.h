@@ -176,6 +176,9 @@ bool flutter_drm_embedder_parse_cmdline_args(int argc, char **argv, struct flutt
 void flutter_drm_embedder_set_gtk_plugin_loader(struct flutter_drm_embedder *flutter_drm_embedder, struct gtk_plugin_loader *loader);
 struct gtk_plugin_loader *flutter_drm_embedder_get_gtk_plugin_loader(struct flutter_drm_embedder *flutter_drm_embedder);
 
+void flutter_drm_embedder_set_fl_texture_registrar(struct flutter_drm_embedder *flutter_drm_embedder, void *registrar);
+void *flutter_drm_embedder_get_fl_texture_registrar(struct flutter_drm_embedder *flutter_drm_embedder);
+
 struct texture_registry *flutter_drm_embedder_get_texture_registry(struct flutter_drm_embedder *flutter_drm_embedder);
 
 struct plugin_registry *flutter_drm_embedder_get_plugin_registry(struct flutter_drm_embedder *flutter_drm_embedder);

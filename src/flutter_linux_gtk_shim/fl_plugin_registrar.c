@@ -40,7 +40,15 @@ FlPluginRegistrar *fl_plugin_registrar_new_for_flutter_drm_embedder(struct flutt
     FlPluginRegistrar *registrar = g_object_new(FL_TYPE_PLUGIN_REGISTRAR, NULL);
     registrar->flutter_drm_embedder = flutter_drm_embedder;
     registrar->messenger = fl_binary_messenger_new_for_flutter_drm_embedder(flutter_drm_embedder);
-    registrar->texture_registrar = fl_texture_registrar_new_for_flutter_drm_embedder(flutter_drm_embedder);
+
+    // Use a shared texture registrar that lives as long as the embedder,
+    // matching real Flutter Linux API lifetime semantics.
+    FlTextureRegistrar *shared = (FlTextureRegistrar *) flutter_drm_embedder_get_fl_texture_registrar(flutter_drm_embedder);
+    if (shared == NULL) {
+        shared = fl_texture_registrar_new_for_flutter_drm_embedder(flutter_drm_embedder);
+        flutter_drm_embedder_set_fl_texture_registrar(flutter_drm_embedder, shared);
+    }
+    registrar->texture_registrar = g_object_ref(shared);
     return registrar;
 }
 
