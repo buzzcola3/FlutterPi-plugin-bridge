@@ -149,6 +149,8 @@ OPTIONS:\n\
 \n\
     --drm-fd                   An opened and valid DRM file descriptor\n\
 \n\
+    -V, --version                Show version and exit.\n\
+\n\
     -h, --help                 Show this help and exit.\n\
 \n\
 EXAMPLES:\n\
@@ -1914,6 +1916,7 @@ bool flutter_drm_embedder_parse_cmdline_args(int argc, char **argv, struct flutt
         { "dummy-display-size", required_argument, NULL, 's' },
         { "drm-fd", required_argument, NULL, 'f' },
         { "debug-kms", no_argument, NULL, 'K' },
+        { "version", no_argument, NULL, 'V' },
         { 0, 0, 0, 0 },
     };
     memset(result_out, 0, sizeof *result_out);
@@ -1933,7 +1936,7 @@ bool flutter_drm_embedder_parse_cmdline_args(int argc, char **argv, struct flutt
     finished_parsing_options = false;
     while (!finished_parsing_options) {
         longopt_index = 0;
-        opt = getopt_long(argc, argv, "+i:o:r:d:h:f:", long_options, &longopt_index);
+        opt = getopt_long(argc, argv, "+i:o:r:d:h:f:V", long_options, &longopt_index);
 
         switch (opt) {
             case 0:
@@ -2054,6 +2057,8 @@ valid_format:
                 break;
 
             case 'h': printf("%s", usage); return false;
+
+            case 'V': printf("flutter-drm-embedder %s\n", FLUTTER_DRM_EMBEDDER_VERSION); return false;
 
             case '?':
             case ':': LOG_ERROR("Invalid option specified.\n%s", usage); return false;
@@ -2963,6 +2968,8 @@ void flutter_drm_embedder_destroy(struct flutter_drm_embedder *flutter_drm_embed
 int flutter_drm_embedder_app_main(int argc, char **argv) {
     struct flutter_drm_embedder *flutter_drm_embedder;
     int ok;
+
+    LOG_DEBUG("flutter-drm-embedder %s\n", FLUTTER_DRM_EMBEDDER_VERSION);
 
 #ifdef ENABLE_MTRACE
     mtrace();
