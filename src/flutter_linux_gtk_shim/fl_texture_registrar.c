@@ -81,10 +81,19 @@ static void fl_texture_init(FlTexture *self) {
 FlTextureRegistrar *fl_texture_registrar_new_for_flutter_drm_embedder(struct flutter_drm_embedder *flutter_drm_embedder) {
     FlTextureRegistrar *registrar = g_object_new(FL_TYPE_TEXTURE_REGISTRAR, NULL);
     registrar->flutter_drm_embedder = flutter_drm_embedder;
+    g_message("[texture_registrar] created registrar %p (GType=%lu, embedder=%p)",
+             (void *)registrar, (unsigned long)FL_TYPE_TEXTURE_REGISTRAR, (void *)flutter_drm_embedder);
     return registrar;
 }
 
 gboolean fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, FlTexture *texture) {
+    g_message("[texture_registrar] register_texture called: registrar=%p texture=%p", (void *)registrar, (void *)texture);
+    if (registrar != NULL) {
+        GType actual_type = G_TYPE_FROM_INSTANCE(registrar);
+        g_message("[texture_registrar]   registrar GType: actual=%lu expected=%lu name='%s' IS_TEXTURE_REGISTRAR=%d",
+                 (unsigned long)actual_type, (unsigned long)FL_TYPE_TEXTURE_REGISTRAR,
+                 g_type_name(actual_type), FL_IS_TEXTURE_REGISTRAR(registrar) ? 1 : 0);
+    }
     g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), FALSE);
     g_return_val_if_fail(FL_IS_TEXTURE(texture), FALSE);
 
@@ -109,6 +118,7 @@ gboolean fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, Fl
 
     priv->texture = native_texture;
     priv->texture_id = texture_get_id(native_texture);
+    g_message("[texture_registrar] registered texture: id=%" G_GINT64_FORMAT " native=%p", priv->texture_id, (void *)native_texture);
     return TRUE;
 #endif
 }
@@ -128,6 +138,12 @@ gboolean fl_texture_registrar_unregister_texture(FlTextureRegistrar *registrar, 
 }
 
 gboolean fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *registrar, FlTexture *texture) {
+    if (registrar != NULL && !FL_IS_TEXTURE_REGISTRAR(registrar)) {
+        GType actual_type = G_TYPE_FROM_INSTANCE(registrar);
+        g_critical("[texture_registrar] mark_frame_available: TYPE MISMATCH! registrar=%p actual_type=%lu('%s') expected_type=%lu('%s')",
+                  (void *)registrar, (unsigned long)actual_type, g_type_name(actual_type),
+                  (unsigned long)FL_TYPE_TEXTURE_REGISTRAR, g_type_name(FL_TYPE_TEXTURE_REGISTRAR));
+    }
     g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), FALSE);
     g_return_val_if_fail(FL_IS_TEXTURE(texture), FALSE);
     (void) registrar;

@@ -202,7 +202,9 @@ struct gtk_plugin_loader *gtk_plugin_loader_load(struct flutter_drm_embedder *fl
             continue;
         }
 
-        handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+        LOG_DEBUG("[plugin_loader] trying to load plugin: %s (symbol: %s)\n", path, symbol);
+
+        handle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
         if (handle == NULL) {
             LOG_ERROR("Failed to load plugin %s: %s\n", path, dlerror());
             free(symbol);
@@ -220,6 +222,7 @@ struct gtk_plugin_loader *gtk_plugin_loader_load(struct flutter_drm_embedder *fl
             continue;
         }
 
+        LOG_DEBUG("[plugin_loader] creating registrar for plugin %s\n", path);
         FlPluginRegistrar *registrar = fl_plugin_registrar_new_for_flutter_drm_embedder(flutter_drm_embedder);
         if (registrar == NULL) {
             LOG_ERROR("Failed to create GTK registrar for %s.\n", path);
@@ -229,7 +232,9 @@ struct gtk_plugin_loader *gtk_plugin_loader_load(struct flutter_drm_embedder *fl
             continue;
         }
 
+        LOG_DEBUG("[plugin_loader] calling %s(%p)\n", symbol, (void *)registrar);
         register_func(registrar);
+        LOG_DEBUG("[plugin_loader] %s completed, unreffing registrar\n", symbol);
         g_object_unref(registrar);
 
         if (!ensure_handle_capacity(loader)) {

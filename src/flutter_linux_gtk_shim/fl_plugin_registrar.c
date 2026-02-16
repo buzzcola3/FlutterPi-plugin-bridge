@@ -47,8 +47,14 @@ FlPluginRegistrar *fl_plugin_registrar_new_for_flutter_drm_embedder(struct flutt
     if (shared == NULL) {
         shared = fl_texture_registrar_new_for_flutter_drm_embedder(flutter_drm_embedder);
         flutter_drm_embedder_set_fl_texture_registrar(flutter_drm_embedder, shared);
+        g_message("[plugin_registrar] created NEW shared texture registrar %p", (void *)shared);
+    } else {
+        g_message("[plugin_registrar] reusing existing shared texture registrar %p", (void *)shared);
     }
     registrar->texture_registrar = g_object_ref(shared);
+    g_message("[plugin_registrar] new plugin registrar %p (texture_registrar=%p, IS_TEXTURE_REGISTRAR=%d)",
+             (void *)registrar, (void *)registrar->texture_registrar,
+             FL_IS_TEXTURE_REGISTRAR(registrar->texture_registrar) ? 1 : 0);
     return registrar;
 }
 
@@ -59,5 +65,8 @@ FlBinaryMessenger *fl_plugin_registrar_get_messenger(FlPluginRegistrar *registra
 
 FlTextureRegistrar *fl_plugin_registrar_get_texture_registrar(FlPluginRegistrar *registrar) {
     g_return_val_if_fail(FL_IS_PLUGIN_REGISTRAR(registrar), NULL);
+    g_message("[plugin_registrar] get_texture_registrar: returning %p (IS_TEXTURE_REGISTRAR=%d)",
+             (void *)registrar->texture_registrar,
+             registrar->texture_registrar ? FL_IS_TEXTURE_REGISTRAR(registrar->texture_registrar) : 0);
     return registrar->texture_registrar;
 }

@@ -1125,7 +1125,15 @@ on_gl_external_texture_frame_callback(void *userdata, int64_t texture_id, size_t
 
     flutter_drm_embedder = userdata;
 
-    return texture_registry_gl_external_texture_frame_callback(flutter_drm_embedder->texture_registry, texture_id, width, height, texture_out);
+    LOG_DEBUG("[embedder] gl_external_texture_frame_callback: texture_id=%" PRId64 " size=%zux%zu\n", texture_id, width, height);
+    bool result = texture_registry_gl_external_texture_frame_callback(flutter_drm_embedder->texture_registry, texture_id, width, height, texture_out);
+    if (result) {
+        LOG_DEBUG("[embedder] gl_external_texture_frame_callback: success target=0x%x name=%u %zux%zu\n",
+                 texture_out->target, texture_out->name, texture_out->width, texture_out->height);
+    } else {
+        LOG_DEBUG("[embedder] gl_external_texture_frame_callback: returned false for texture_id=%" PRId64 "\n", texture_id);
+    }
+    return result;
 }
 #endif
 
@@ -1219,6 +1227,7 @@ static int on_register_texture(void *userdata, int64_t texture_identifier) {
     flutter_drm_embedder = userdata;
     ASSERT_NOT_NULL(flutter_drm_embedder->flutter.engine);
 
+    LOG_DEBUG("[embedder] RegisterExternalTexture id=%" PRId64 "\n", texture_identifier);
     engine_result = flutter_drm_embedder->flutter.procs.RegisterExternalTexture(flutter_drm_embedder->flutter.engine, texture_identifier);
     if (engine_result != kSuccess) {
         LOG_ERROR(
@@ -1228,6 +1237,7 @@ static int on_register_texture(void *userdata, int64_t texture_identifier) {
         return EIO;
     }
 
+    LOG_DEBUG("[embedder] RegisterExternalTexture id=%" PRId64 " succeeded\n", texture_identifier);
     return 0;
 }
 
@@ -1239,6 +1249,7 @@ static int on_unregister_texture(void *userdata, int64_t texture_identifier) {
     flutter_drm_embedder = userdata;
     ASSERT_NOT_NULL(flutter_drm_embedder->flutter.engine);
 
+    LOG_DEBUG("[embedder] UnregisterExternalTexture id=%" PRId64 "\n", texture_identifier);
     engine_result = flutter_drm_embedder->flutter.procs.UnregisterExternalTexture(flutter_drm_embedder->flutter.engine, texture_identifier);
     if (engine_result != kSuccess) {
         LOG_ERROR(
@@ -1248,6 +1259,7 @@ static int on_unregister_texture(void *userdata, int64_t texture_identifier) {
         return EIO;
     }
 
+    LOG_DEBUG("[embedder] UnregisterExternalTexture id=%" PRId64 " succeeded\n", texture_identifier);
     return 0;
 }
 
@@ -1259,6 +1271,7 @@ static int on_mark_texture_frame_available(void *userdata, int64_t texture_ident
     flutter_drm_embedder = userdata;
     ASSERT_NOT_NULL(flutter_drm_embedder->flutter.engine);
 
+    LOG_DEBUG("[embedder] MarkExternalTextureFrameAvailable id=%" PRId64 "\n", texture_identifier);
     engine_result = flutter_drm_embedder->flutter.procs.MarkExternalTextureFrameAvailable(flutter_drm_embedder->flutter.engine, texture_identifier);
     if (engine_result != kSuccess) {
         LOG_ERROR(
@@ -1268,6 +1281,7 @@ static int on_mark_texture_frame_available(void *userdata, int64_t texture_ident
         return EIO;
     }
 
+    LOG_DEBUG("[embedder] MarkExternalTextureFrameAvailable id=%" PRId64 " succeeded\n", texture_identifier);
     return 0;
 }
 

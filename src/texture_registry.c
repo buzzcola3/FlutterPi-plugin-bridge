@@ -110,18 +110,22 @@ int64_t texture_registry_allocate_id(struct texture_registry *reg) {
 static int texture_registry_register_texture(struct texture_registry *reg, struct texture *texture) {
     int ok;
 
+    LOG_DEBUG("[texture_registry] registering texture id=%" PRId64 " with engine\n", texture->id);
+
     texture_registry_lock(reg);
     list_add(&texture->entry, &reg->textures);
     texture_registry_unlock(reg);
 
     ok = reg->interface.register_texture(reg->userdata, texture->id);
     if (ok != 0) {
+        LOG_ERROR("[texture_registry] engine register_texture failed for id=%" PRId64 " (err=%d)\n", texture->id, ok);
         texture_registry_lock(reg);
         list_del(&texture->entry);
         texture_registry_unlock(reg);
         return ok;
     }
 
+    LOG_DEBUG("[texture_registry] engine register_texture succeeded for id=%" PRId64 "\n", texture->id);
     return 0;
 }
 
@@ -198,6 +202,8 @@ struct texture *texture_new(struct texture_registry *reg) {
     texture->next_frame = NULL;
     texture->dirty = false;
 
+    LOG_DEBUG("[texture_registry] texture_new: id=%" PRId64 " texture=%p registry=%p\n", id, (void *)texture, (void *)reg);
+
     ok = texture_registry_register_texture(reg, texture);
     if (ok != 0) {
         pthread_mutex_destroy(&texture->lock);
@@ -213,6 +219,7 @@ int64_t texture_get_id(struct texture *texture) {
 
 int texture_mark_frame_available(struct texture *texture) {
     ASSERT_NOT_NULL(texture);
+    LOG_DEBUG("[texture_registry] mark_frame_available for texture id=%" PRId64 "\n", texture->id);
     return texture->registry->interface.mark_frame_available(texture->registry->userdata, texture->id);
 }
 
@@ -245,9 +252,10 @@ static int push_frame(
     counted_texture_frame_swap_ptrs(&texture->next_frame, counted_frame);
 
     if (texture->dirty == false) {
+        LOG_DEBUG("[texture_registry] push_frame: notifying engine for texture id=%" PRId64 " (first dirty frame)\n", texture->id);
         ok = texture->registry->interface.mark_frame_available(texture->registry->userdata, texture->id);
         if (ok != 0) {
-            /// TODO: Don't really know what do to here.
+            LOG_ERROR("[texture_registry] push_frame: mark_frame_available failed for id=%" PRId64 " (err=%d)\n", texture->id, ok);
         }
 
         /// We have now called @ref texture_registry_engine_notify_frame_available available.
