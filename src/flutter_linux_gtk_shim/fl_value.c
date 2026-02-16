@@ -118,7 +118,7 @@ static void fl_value_init(FlValue *self) {
 }
 
 FlValueType fl_value_get_type_id(FlValue *value) {
-    g_return_val_if_fail(FL_IS_VALUE(value), FL_VALUE_TYPE_NULL);
+    g_return_val_if_fail(value != NULL, FL_VALUE_TYPE_NULL);
     return value->type;
 }
 
@@ -210,27 +210,27 @@ void fl_value_unref(FlValue *value) {
 }
 
 const gchar *fl_value_get_string(FlValue *value) {
-    g_return_val_if_fail(FL_IS_VALUE(value), NULL);
+    g_return_val_if_fail(value != NULL, NULL);
     return value->type == FL_VALUE_TYPE_STRING ? value->value.string_value : NULL;
 }
 
 int64_t fl_value_get_int(FlValue *value) {
-    g_return_val_if_fail(FL_IS_VALUE(value), 0);
+    g_return_val_if_fail(value != NULL, 0);
     return value->type == FL_VALUE_TYPE_INT ? value->value.int_value : 0;
 }
 
 double fl_value_get_float(FlValue *value) {
-    g_return_val_if_fail(FL_IS_VALUE(value), 0.0);
+    g_return_val_if_fail(value != NULL, 0.0);
     return value->type == FL_VALUE_TYPE_FLOAT ? value->value.float_value : 0.0;
 }
 
 gboolean fl_value_get_bool(FlValue *value) {
-    g_return_val_if_fail(FL_IS_VALUE(value), FALSE);
+    g_return_val_if_fail(value != NULL, FALSE);
     return value->type == FL_VALUE_TYPE_BOOL ? value->value.bool_value : FALSE;
 }
 
 size_t fl_value_get_length(FlValue *value) {
-    g_return_val_if_fail(FL_IS_VALUE(value), 0);
+    g_return_val_if_fail(value != NULL, 0);
 
     switch (value->type) {
         case FL_VALUE_TYPE_UINT8_LIST: return value->value.uint8_list.length;
@@ -244,7 +244,7 @@ size_t fl_value_get_length(FlValue *value) {
 }
 
 const uint8_t *fl_value_get_uint8_list(FlValue *value, size_t *length) {
-    g_return_val_if_fail(FL_IS_VALUE(value), NULL);
+    g_return_val_if_fail(value != NULL, NULL);
     if (value->type != FL_VALUE_TYPE_UINT8_LIST) {
         if (length) {
             *length = 0;
@@ -258,7 +258,7 @@ const uint8_t *fl_value_get_uint8_list(FlValue *value, size_t *length) {
 }
 
 const int32_t *fl_value_get_int32_list(FlValue *value, size_t *length) {
-    g_return_val_if_fail(FL_IS_VALUE(value), NULL);
+    g_return_val_if_fail(value != NULL, NULL);
     if (value->type != FL_VALUE_TYPE_INT32_LIST) {
         if (length) {
             *length = 0;
@@ -272,7 +272,7 @@ const int32_t *fl_value_get_int32_list(FlValue *value, size_t *length) {
 }
 
 const int64_t *fl_value_get_int64_list(FlValue *value, size_t *length) {
-    g_return_val_if_fail(FL_IS_VALUE(value), NULL);
+    g_return_val_if_fail(value != NULL, NULL);
     if (value->type != FL_VALUE_TYPE_INT64_LIST) {
         if (length) {
             *length = 0;
@@ -286,7 +286,7 @@ const int64_t *fl_value_get_int64_list(FlValue *value, size_t *length) {
 }
 
 const double *fl_value_get_float_list(FlValue *value, size_t *length) {
-    g_return_val_if_fail(FL_IS_VALUE(value), NULL);
+    g_return_val_if_fail(value != NULL, NULL);
     if (value->type != FL_VALUE_TYPE_FLOAT_LIST) {
         if (length) {
             *length = 0;
@@ -300,7 +300,7 @@ const double *fl_value_get_float_list(FlValue *value, size_t *length) {
 }
 
 FlValue *fl_value_get_list_value(FlValue *value, size_t index) {
-    g_return_val_if_fail(FL_IS_VALUE(value), NULL);
+    g_return_val_if_fail(value != NULL, NULL);
     if (value->type != FL_VALUE_TYPE_LIST || value->value.list == NULL || index >= value->value.list->len) {
         return NULL;
     }
@@ -308,7 +308,7 @@ FlValue *fl_value_get_list_value(FlValue *value, size_t index) {
 }
 
 FlValue *fl_value_get_map_key(FlValue *value, size_t index) {
-    g_return_val_if_fail(FL_IS_VALUE(value), NULL);
+    g_return_val_if_fail(value != NULL, NULL);
     if (value->type != FL_VALUE_TYPE_MAP || value->value.map.keys == NULL || index >= value->value.map.keys->len) {
         return NULL;
     }
@@ -316,7 +316,7 @@ FlValue *fl_value_get_map_key(FlValue *value, size_t index) {
 }
 
 FlValue *fl_value_get_map_value(FlValue *value, size_t index) {
-    g_return_val_if_fail(FL_IS_VALUE(value), NULL);
+    g_return_val_if_fail(value != NULL, NULL);
     if (value->type != FL_VALUE_TYPE_MAP || value->value.map.values == NULL || index >= value->value.map.values->len) {
         return NULL;
     }
@@ -324,7 +324,7 @@ FlValue *fl_value_get_map_value(FlValue *value, size_t index) {
 }
 
 FlValue *fl_value_lookup_string(FlValue *map, const gchar *key) {
-    g_return_val_if_fail(FL_IS_VALUE(map), NULL);
+    g_return_val_if_fail(map != NULL, NULL);
     g_return_val_if_fail(key != NULL, NULL);
     if (map->type != FL_VALUE_TYPE_MAP || map->value.map.keys == NULL) {
         return NULL;
@@ -344,8 +344,8 @@ FlValue *fl_value_lookup_string(FlValue *map, const gchar *key) {
 }
 
 void fl_value_append(FlValue *list, FlValue *value) {
-    g_return_if_fail(FL_IS_VALUE(list));
-    g_return_if_fail(FL_IS_VALUE(value));
+    g_return_if_fail(list != NULL);
+    g_return_if_fail(value != NULL);
     if (list->type != FL_VALUE_TYPE_LIST) {
         return;
     }
@@ -353,9 +353,9 @@ void fl_value_append(FlValue *list, FlValue *value) {
 }
 
 void fl_value_set(FlValue *map, FlValue *key, FlValue *value) {
-    g_return_if_fail(FL_IS_VALUE(map));
-    g_return_if_fail(FL_IS_VALUE(key));
-    g_return_if_fail(FL_IS_VALUE(value));
+    g_return_if_fail(map != NULL);
+    g_return_if_fail(key != NULL);
+    g_return_if_fail(value != NULL);
     if (map->type != FL_VALUE_TYPE_MAP) {
         return;
     }

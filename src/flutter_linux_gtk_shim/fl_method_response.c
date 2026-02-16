@@ -38,7 +38,7 @@ static void fl_method_response_init(FlMethodResponse *self) {
 }
 
 FlMethodResponseType fl_method_response_get_type_id(FlMethodResponse *response) {
-    g_return_val_if_fail(FL_IS_METHOD_RESPONSE(response), FL_METHOD_RESPONSE_NOT_IMPLEMENTED);
+    g_return_val_if_fail(response != NULL, FL_METHOD_RESPONSE_NOT_IMPLEMENTED);
     return response->type;
 }
 
@@ -65,21 +65,21 @@ FlMethodResponse *fl_method_not_implemented_response_new(void) {
 }
 
 FlValue *fl_method_response_get_result(FlMethodResponse *response) {
-    g_return_val_if_fail(FL_IS_METHOD_RESPONSE(response), NULL);
+    g_return_val_if_fail(response != NULL, NULL);
     return response->result;
 }
 
 const gchar *fl_method_response_get_error_code(FlMethodResponse *response) {
-    g_return_val_if_fail(FL_IS_METHOD_RESPONSE(response), NULL);
+    g_return_val_if_fail(response != NULL, NULL);
     return response->error_code;
 }
 
 const gchar *fl_method_response_get_error_message(FlMethodResponse *response) {
-    g_return_val_if_fail(FL_IS_METHOD_RESPONSE(response), NULL);
+    g_return_val_if_fail(response != NULL, NULL);
     return response->error_message;
 }
 
 FlValue *fl_method_response_get_error_details(FlMethodResponse *response) {
-    g_return_val_if_fail(FL_IS_METHOD_RESPONSE(response), NULL);
+    g_return_val_if_fail(response != NULL, NULL);
     return response->error_details;
 }

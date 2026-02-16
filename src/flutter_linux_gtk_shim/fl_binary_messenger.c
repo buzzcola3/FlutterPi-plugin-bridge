@@ -122,7 +122,7 @@ void fl_binary_messenger_set_message_handler_on_channel(FlBinaryMessenger *messe
                                                         FlBinaryMessengerMessageHandler handler,
                                                         gpointer user_data,
                                                         GDestroyNotify destroy_notify) {
-    g_return_if_fail(FL_IS_BINARY_MESSENGER(messenger));
+    g_return_if_fail(messenger != NULL);
     g_return_if_fail(channel != NULL);
 
     if (handler == NULL) {
@@ -173,7 +173,7 @@ void fl_binary_messenger_send_on_channel(FlBinaryMessenger *messenger,
                                          GCancellable *cancellable,
                                          GAsyncReadyCallback callback,
                                          gpointer user_data) {
-    g_return_if_fail(FL_IS_BINARY_MESSENGER(messenger));
+    g_return_if_fail(messenger != NULL);
     g_return_if_fail(channel != NULL);
 
     GTask *task = g_task_new(messenger, cancellable, callback, user_data);
@@ -213,7 +213,7 @@ void fl_binary_messenger_send_on_channel(FlBinaryMessenger *messenger,
 }
 
 GBytes *fl_binary_messenger_send_on_channel_finish(FlBinaryMessenger *messenger, GAsyncResult *result, GError **error) {
-    g_return_val_if_fail(FL_IS_BINARY_MESSENGER(messenger), NULL);
+    g_return_val_if_fail(messenger != NULL, NULL);
     return g_task_propagate_pointer(G_TASK(result), error);
 }
 
@@ -221,7 +221,7 @@ void fl_binary_messenger_send_response(FlBinaryMessenger *messenger,
                                        FlBinaryMessengerResponseHandle *response_handle,
                                        GBytes *response,
                                        GError **error) {
-    g_return_if_fail(FL_IS_BINARY_MESSENGER(messenger));
+    g_return_if_fail(messenger != NULL);
     g_return_if_fail(response_handle != NULL);
 
     gsize size = 0;
@@ -237,7 +237,7 @@ void fl_binary_messenger_send_response(FlBinaryMessenger *messenger,
 }
 
 void fl_binary_messenger_send_on_channel_no_response(FlBinaryMessenger *messenger, const gchar *channel, GBytes *message) {
-    g_return_if_fail(FL_IS_BINARY_MESSENGER(messenger));
+    g_return_if_fail(messenger != NULL);
     g_return_if_fail(channel != NULL);
 
     gsize size = 0;

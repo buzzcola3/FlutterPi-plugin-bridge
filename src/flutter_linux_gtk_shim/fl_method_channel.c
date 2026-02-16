@@ -85,7 +85,7 @@ static void fl_method_channel_message_handler(FlBinaryMessenger *messenger,
 }
 
 FlMethodChannel *fl_method_channel_new(FlBinaryMessenger *messenger, const gchar *name, FlMethodCodec *codec) {
-    g_return_val_if_fail(FL_IS_BINARY_MESSENGER(messenger), NULL);
+    g_return_val_if_fail(messenger != NULL, NULL);
     g_return_val_if_fail(name != NULL, NULL);
 
     FlMethodChannel *channel = g_object_new(FL_TYPE_METHOD_CHANNEL, NULL);
@@ -99,7 +99,7 @@ void fl_method_channel_set_method_call_handler(FlMethodChannel *channel,
                                                FlMethodChannelMethodCallHandler handler,
                                                gpointer user_data,
                                                GDestroyNotify destroy_notify) {
-    g_return_if_fail(FL_IS_METHOD_CHANNEL(channel));
+    g_return_if_fail(channel != NULL);
 
     if (channel->handler_destroy_notify && channel->handler_user_data) {
         channel->handler_destroy_notify(channel->handler_user_data);
@@ -174,7 +174,7 @@ void fl_method_channel_invoke_method(FlMethodChannel *channel,
                                      GCancellable *cancellable,
                                      GAsyncReadyCallback callback,
                                      gpointer user_data) {
-    g_return_if_fail(FL_IS_METHOD_CHANNEL(channel));
+    g_return_if_fail(channel != NULL);
 
     GError *error = NULL;
     GBytes *message = fl_method_codec_encode_method_call(channel->codec, method, args, &error);
@@ -200,6 +200,6 @@ void fl_method_channel_invoke_method(FlMethodChannel *channel,
 }
 
 FlMethodResponse *fl_method_channel_invoke_method_finish(FlMethodChannel *channel, GAsyncResult *result, GError **error) {
-    g_return_val_if_fail(FL_IS_METHOD_CHANNEL(channel), NULL);
+    g_return_val_if_fail(channel != NULL, NULL);
     return g_task_propagate_pointer(G_TASK(result), error);
 }

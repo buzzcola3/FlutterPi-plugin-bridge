@@ -61,14 +61,12 @@ FlPluginRegistrar *fl_plugin_registrar_new_for_flutter_drm_embedder(struct flutt
 }
 
 FlBinaryMessenger *fl_plugin_registrar_get_messenger(FlPluginRegistrar *registrar) {
-    g_return_val_if_fail(FL_IS_PLUGIN_REGISTRAR(registrar), NULL);
+    if (registrar == NULL) return NULL;
     return registrar->messenger;
 }
 
 FlTextureRegistrar *fl_plugin_registrar_get_texture_registrar(FlPluginRegistrar *registrar) {
-    g_return_val_if_fail(FL_IS_PLUGIN_REGISTRAR(registrar), NULL);
-    fprintf(stderr, "[plugin_registrar] get_texture_registrar: returning %p (IS_TEXTURE_REGISTRAR=%d)\n",
-             (void *)registrar->texture_registrar,
-             registrar->texture_registrar ? FL_IS_TEXTURE_REGISTRAR(registrar->texture_registrar) : 0);
+    if (registrar == NULL) return NULL;
+    fprintf(stderr, "[plugin_registrar] get_texture_registrar: returning %p\n", (void *)registrar->texture_registrar);
     return registrar->texture_registrar;
 }

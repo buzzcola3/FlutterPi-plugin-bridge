@@ -15,7 +15,10 @@ static void fl_texture_gl_init(FlTextureGL *self) {
 
 gboolean fl_texture_gl_populate(FlTextureGL *texture, uint32_t *target, uint32_t *name, uint32_t *width, uint32_t *height,
                                 GError **error) {
-    g_return_val_if_fail(FL_IS_TEXTURE_GL(texture), FALSE);
+    if (texture == NULL) {
+        g_set_error(error, G_IO_ERROR, G_IO_ERROR_FAILED, "Texture is NULL");
+        return FALSE;
+    }
 
     FlTextureGLClass *klass = FL_TEXTURE_GL_GET_CLASS(texture);
     if (klass->populate == NULL) {

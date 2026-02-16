@@ -57,18 +57,18 @@ FlMethodCall *fl_method_call_new(FlBinaryMessenger *messenger,
 }
 
 const gchar *fl_method_call_get_name(FlMethodCall *method_call) {
-    g_return_val_if_fail(FL_IS_METHOD_CALL(method_call), NULL);
+    g_return_val_if_fail(method_call != NULL, NULL);
     return method_call->name;
 }
 
 FlValue *fl_method_call_get_args(FlMethodCall *method_call) {
-    g_return_val_if_fail(FL_IS_METHOD_CALL(method_call), NULL);
+    g_return_val_if_fail(method_call != NULL, NULL);
     return method_call->args;
 }
 
 gboolean fl_method_call_respond(FlMethodCall *method_call, FlMethodResponse *response, GError **error) {
-    g_return_val_if_fail(FL_IS_METHOD_CALL(method_call), FALSE);
-    g_return_val_if_fail(FL_IS_METHOD_RESPONSE(response), FALSE);
+    g_return_val_if_fail(method_call != NULL, FALSE);
+    g_return_val_if_fail(response != NULL, FALSE);
 
     GBytes *encoded = NULL;
     FlMethodResponseType type = fl_method_response_get_type_id(response);

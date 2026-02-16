@@ -88,17 +88,11 @@ FlTextureRegistrar *fl_texture_registrar_new_for_flutter_drm_embedder(struct flu
 }
 
 gboolean fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, FlTexture *texture) {
-    fprintf(stderr, "[texture_registrar] register_texture called: registrar=%p texture=%p\n", (void *)registrar, (void *)texture);
-    if (registrar != NULL) {
-        GType actual_type = G_TYPE_FROM_INSTANCE(registrar);
-        fprintf(stderr, "[texture_registrar]   registrar GType: actual=%lu expected=%lu name='%s' IS_TEXTURE_REGISTRAR=%d\n",
-                 (unsigned long)actual_type, (unsigned long)FL_TYPE_TEXTURE_REGISTRAR,
-                 g_type_name(actual_type), FL_IS_TEXTURE_REGISTRAR(registrar) ? 1 : 0);
-    } else {
-        fprintf(stderr, "[texture_registrar] register_texture: registrar is NULL!\n");
+    fprintf(stderr, "[texture_registrar] register_texture: registrar=%p texture=%p\n", (void *)registrar, (void *)texture);
+    if (registrar == NULL || texture == NULL) {
+        fprintf(stderr, "[texture_registrar] register_texture: NULL argument!\n");
+        return FALSE;
     }
-    g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), FALSE);
-    g_return_val_if_fail(FL_IS_TEXTURE(texture), FALSE);
 
 #ifndef HAVE_EGL_GLES2
     (void) registrar;
@@ -127,8 +121,11 @@ gboolean fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, Fl
 }
 
 gboolean fl_texture_registrar_unregister_texture(FlTextureRegistrar *registrar, FlTexture *texture) {
-    g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), FALSE);
-    g_return_val_if_fail(FL_IS_TEXTURE(texture), FALSE);
+    fprintf(stderr, "[texture_registrar] unregister_texture: registrar=%p texture=%p\n", (void *)registrar, (void *)texture);
+    if (registrar == NULL || texture == NULL) {
+        fprintf(stderr, "[texture_registrar] unregister_texture: NULL argument!\n");
+        return FALSE;
+    }
 
     (void) registrar;
     FlTexturePrivate *priv = fl_texture_get_instance_private(texture);
@@ -141,25 +138,17 @@ gboolean fl_texture_registrar_unregister_texture(FlTextureRegistrar *registrar, 
 }
 
 gboolean fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *registrar, FlTexture *texture) {
-    if (registrar == NULL) {
-        fprintf(stderr, "[texture_registrar] mark_frame_available: registrar is NULL!\n");
-    } else if (!FL_IS_TEXTURE_REGISTRAR(registrar)) {
-        GType actual_type = G_TYPE_FROM_INSTANCE(registrar);
-        fprintf(stderr, "[texture_registrar] mark_frame_available: TYPE MISMATCH! registrar=%p actual_type=%lu('%s') expected_type=%lu('%s')\n",
-                  (void *)registrar, (unsigned long)actual_type, g_type_name(actual_type),
-                  (unsigned long)FL_TYPE_TEXTURE_REGISTRAR, g_type_name(FL_TYPE_TEXTURE_REGISTRAR));
-    } else {
-        fprintf(stderr, "[texture_registrar] mark_frame_available: registrar=%p OK, texture=%p\n", (void *)registrar, (void *)texture);
+    if (registrar == NULL || texture == NULL) {
+        fprintf(stderr, "[texture_registrar] mark_frame_available: NULL arg! registrar=%p texture=%p\n", (void *)registrar, (void *)texture);
+        return FALSE;
     }
-    g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), FALSE);
-    g_return_val_if_fail(FL_IS_TEXTURE(texture), FALSE);
     (void) registrar;
 #ifndef HAVE_EGL_GLES2
     (void) texture;
     return FALSE;
 #else
     FlTexturePrivate *priv = fl_texture_get_instance_private(texture);
-    if (!priv->texture || !FL_IS_TEXTURE_GL(texture)) {
+    if (!priv->texture) {
         return FALSE;
     }
 
@@ -178,7 +167,7 @@ gboolean fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *r
 }
 
 int64_t fl_texture_get_id(FlTexture *texture) {
-    g_return_val_if_fail(FL_IS_TEXTURE(texture), -1);
+    if (texture == NULL) return -1;
     FlTexturePrivate *priv = fl_texture_get_instance_private(texture);
     return priv->texture_id;
 }

@@ -134,7 +134,7 @@ static void fl_event_channel_init(FlEventChannel *self) {
 }
 
 FlEventChannel *fl_event_channel_new(FlBinaryMessenger *messenger, const gchar *name, FlMethodCodec *codec) {
-    g_return_val_if_fail(FL_IS_BINARY_MESSENGER(messenger), NULL);
+    g_return_val_if_fail(messenger != NULL, NULL);
     g_return_val_if_fail(name != NULL, NULL);
 
     FlEventChannel *channel = g_object_new(FL_TYPE_EVENT_CHANNEL, NULL);
@@ -155,7 +155,7 @@ void fl_event_channel_set_stream_handlers(FlEventChannel *channel,
                                           FlEventChannelCancelCallback on_cancel,
                                           gpointer user_data,
                                           GDestroyNotify destroy_notify) {
-    g_return_if_fail(FL_IS_EVENT_CHANNEL(channel));
+    g_return_if_fail(channel != NULL);
 
     if (channel->destroy_notify && channel->user_data) {
         channel->destroy_notify(channel->user_data);
