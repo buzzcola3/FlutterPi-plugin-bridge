@@ -4,6 +4,7 @@
 #include "fl_texture_registrar_internal.h"
 
 #include <errno.h>
+#include <stdio.h>
 #include "flutter_drm_embedder_shim.h"
 #include "texture_registry.h"
 #include "flutter_linux/fl_texture_gl.h"
@@ -81,18 +82,20 @@ static void fl_texture_init(FlTexture *self) {
 FlTextureRegistrar *fl_texture_registrar_new_for_flutter_drm_embedder(struct flutter_drm_embedder *flutter_drm_embedder) {
     FlTextureRegistrar *registrar = g_object_new(FL_TYPE_TEXTURE_REGISTRAR, NULL);
     registrar->flutter_drm_embedder = flutter_drm_embedder;
-    g_message("[texture_registrar] created registrar %p (GType=%lu, embedder=%p)",
+    fprintf(stderr, "[texture_registrar] created registrar %p (GType=%lu, embedder=%p)\n",
              (void *)registrar, (unsigned long)FL_TYPE_TEXTURE_REGISTRAR, (void *)flutter_drm_embedder);
     return registrar;
 }
 
 gboolean fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, FlTexture *texture) {
-    g_message("[texture_registrar] register_texture called: registrar=%p texture=%p", (void *)registrar, (void *)texture);
+    fprintf(stderr, "[texture_registrar] register_texture called: registrar=%p texture=%p\n", (void *)registrar, (void *)texture);
     if (registrar != NULL) {
         GType actual_type = G_TYPE_FROM_INSTANCE(registrar);
-        g_message("[texture_registrar]   registrar GType: actual=%lu expected=%lu name='%s' IS_TEXTURE_REGISTRAR=%d",
+        fprintf(stderr, "[texture_registrar]   registrar GType: actual=%lu expected=%lu name='%s' IS_TEXTURE_REGISTRAR=%d\n",
                  (unsigned long)actual_type, (unsigned long)FL_TYPE_TEXTURE_REGISTRAR,
                  g_type_name(actual_type), FL_IS_TEXTURE_REGISTRAR(registrar) ? 1 : 0);
+    } else {
+        fprintf(stderr, "[texture_registrar] register_texture: registrar is NULL!\n");
     }
     g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), FALSE);
     g_return_val_if_fail(FL_IS_TEXTURE(texture), FALSE);
@@ -118,7 +121,7 @@ gboolean fl_texture_registrar_register_texture(FlTextureRegistrar *registrar, Fl
 
     priv->texture = native_texture;
     priv->texture_id = texture_get_id(native_texture);
-    g_message("[texture_registrar] registered texture: id=%" G_GINT64_FORMAT " native=%p", priv->texture_id, (void *)native_texture);
+    fprintf(stderr, "[texture_registrar] registered texture: id=%" G_GINT64_FORMAT " native=%p\n", priv->texture_id, (void *)native_texture);
     return TRUE;
 #endif
 }
@@ -138,11 +141,15 @@ gboolean fl_texture_registrar_unregister_texture(FlTextureRegistrar *registrar, 
 }
 
 gboolean fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *registrar, FlTexture *texture) {
-    if (registrar != NULL && !FL_IS_TEXTURE_REGISTRAR(registrar)) {
+    if (registrar == NULL) {
+        fprintf(stderr, "[texture_registrar] mark_frame_available: registrar is NULL!\n");
+    } else if (!FL_IS_TEXTURE_REGISTRAR(registrar)) {
         GType actual_type = G_TYPE_FROM_INSTANCE(registrar);
-        g_critical("[texture_registrar] mark_frame_available: TYPE MISMATCH! registrar=%p actual_type=%lu('%s') expected_type=%lu('%s')",
+        fprintf(stderr, "[texture_registrar] mark_frame_available: TYPE MISMATCH! registrar=%p actual_type=%lu('%s') expected_type=%lu('%s')\n",
                   (void *)registrar, (unsigned long)actual_type, g_type_name(actual_type),
                   (unsigned long)FL_TYPE_TEXTURE_REGISTRAR, g_type_name(FL_TYPE_TEXTURE_REGISTRAR));
+    } else {
+        fprintf(stderr, "[texture_registrar] mark_frame_available: registrar=%p OK, texture=%p\n", (void *)registrar, (void *)texture);
     }
     g_return_val_if_fail(FL_IS_TEXTURE_REGISTRAR(registrar), FALSE);
     g_return_val_if_fail(FL_IS_TEXTURE(texture), FALSE);
