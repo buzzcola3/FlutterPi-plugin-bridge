@@ -5,6 +5,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include "flutter_drm_embedder_shim.h"
 #include "texture_registry.h"
 #include "flutter_linux/fl_texture_gl.h"
@@ -31,9 +32,16 @@ static int fl_texture_gl_resolve_frame(size_t width, size_t height, void *userda
     uint32_t w = 0;
     uint32_t h = 0;
     GError *error = NULL;
+
+    /* Zero the entire output struct so that frame_out->destroy and
+     * frame_out->userdata are NULL.  Without this, counted_texture_frame_destroy
+     * will jump to a garbage address when it checks frame->frame.destroy. */
+    memset(frame_out, 0, sizeof(*frame_out));
+
     gboolean ok = fl_texture_gl_populate(texture_gl, &target, &name, &w, &h, &error);
     if (!ok) {
         if (error) {
+            fprintf(stderr, "[fl_texture_gl] resolve_frame: populate failed: %s\n", error->message);
             g_error_free(error);
         }
         return EIO;
@@ -152,7 +160,10 @@ gboolean fl_texture_registrar_mark_texture_frame_available(FlTextureRegistrar *r
         return FALSE;
     }
 
-    FlTextureGL *gl_texture = FL_TEXTURE_GL(texture);
+    /* Direct cast — avoids GType validation in FL_TEXTURE_GL() which is
+     * unreliable across dlopen boundaries.  The FlTextureGL is always the
+     * first member of any subclass (e.g. OAVideoTexture). */
+    FlTextureGL *gl_texture = (FlTextureGL *)texture;
     g_object_ref(gl_texture);
 
     struct unresolved_texture_frame frame = {

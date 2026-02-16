@@ -232,8 +232,9 @@ static int push_frame(
     struct counted_texture_frame *counted_frame;
     int ok;
 
-    // I know there's memdup, but let's just be explicit here.
-    counted_frame = malloc(sizeof *counted_frame);
+    // Use calloc so that frame.destroy / frame.userdata are guaranteed zero
+    // when only the unresolved_frame half is populated (and vice-versa).
+    counted_frame = calloc(1, sizeof *counted_frame);
     if (counted_frame == NULL) {
         return ENOMEM;
     }

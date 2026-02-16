@@ -64,6 +64,15 @@ jobs:
           submodules: "recursive"
           fetch-depth: 0
 
+      - name: Determine version
+        id: version
+        run: |
+          git config --global --add safe.directory '*'
+          VER=$(git describe --tags --always --dirty 2>/dev/null || echo "unknown")
+          VER=${VER#release/}
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VER"
+
       - name: Configure CMake
         run: |
           cmake \
@@ -75,6 +84,7 @@ jobs:
             -DENABLE_VULKAN=${{ matrix.enable-vulkan }} \
             -DENABLE_OPENGL=${{ matrix.enable-opengl }} \
             -DENABLE_TESTS=On \
+            -DFLUTTER_DRM_EMBEDDER_VERSION="${{ steps.version.outputs.version }}" \
             -GNinja
           echo test
 
@@ -180,6 +190,15 @@ jobs:
           submodules: "recursive"
           fetch-depth: 0
 
+      - name: Determine version
+        id: version
+        run: |
+          git config --global --add safe.directory '*'
+          VER=$(git describe --tags --always --dirty 2>/dev/null || echo "unknown")
+          VER=${VER#release/}
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VER"
+
       - name: Configure CMake
         run: |
           cmake \
@@ -196,6 +215,7 @@ jobs:
             -DBUILD_SENTRY_PLUGIN=${{ matrix.sentry-plugin-enable }} \
             -DSENTRY_BACKEND=${{ matrix.sentry-backend }} \
             -DSENTRY_PLUGIN_BUNDLE_CRASHPAD_HANDLER=${{ matrix.sentry-bundled-crashpad-handler }} \
+            -DFLUTTER_DRM_EMBEDDER_VERSION="${{ steps.version.outputs.version }}" \
             -GNinja
 
       - name: Build

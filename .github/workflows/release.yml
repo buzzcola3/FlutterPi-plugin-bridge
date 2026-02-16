@@ -84,6 +84,15 @@ jobs:
           submodules: 'recursive'
           fetch-depth: 0
       
+      - name: Determine version
+        id: version
+        run: |
+          git config --global --add safe.directory '*'
+          VER=$(git describe --tags --always --dirty 2>/dev/null || echo "unknown")
+          VER=${VER#release/}
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VER"
+
       - name: Configure CMake
         env:
           CMAKE_SYSTEM_NAME: ${{ matrix.is-cross && '-DCMAKE_SYSTEM_NAME=Linux' || '' }}
@@ -110,6 +119,7 @@ jobs:
             -DENABLE_TESTS=On \
             -DBUILD_SENTRY_PLUGIN=OFF \
             -DCMAKE_INSTALL_PREFIX=$PWD/dist \
+            -DFLUTTER_DRM_EMBEDDER_VERSION="${{ steps.version.outputs.version }}" \
             -GNinja
       
       - name: Build & Install

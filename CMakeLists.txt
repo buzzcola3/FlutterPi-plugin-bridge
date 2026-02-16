@@ -90,20 +90,23 @@ endif()
 
 project(flutter-drm-embedder LANGUAGES ${flutter_drm_embedder_languages} VERSION "1.0.0")
 
-# Derive version string from git tags (release/X.Y.Z -> X.Y.Z) + commit hash
-execute_process(
-  COMMAND git describe --tags --always --dirty
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-  OUTPUT_VARIABLE GIT_DESCRIBE
-  OUTPUT_STRIP_TRAILING_WHITESPACE
-  ERROR_QUIET
-  RESULT_VARIABLE GIT_DESCRIBE_RESULT
-)
-if (GIT_DESCRIBE_RESULT EQUAL 0)
-  # Strip "release/" prefix if present
-  string(REGEX REPLACE "^release/" "" FLUTTER_DRM_EMBEDDER_VERSION "${GIT_DESCRIBE}")
-else()
-  set(FLUTTER_DRM_EMBEDDER_VERSION "unknown")
+# Version string: accept -DFLUTTER_DRM_EMBEDDER_VERSION=... from CI, otherwise
+# derive from git tags (release/X.Y.Z -> X.Y.Z) + commit info.
+if (NOT DEFINED FLUTTER_DRM_EMBEDDER_VERSION OR FLUTTER_DRM_EMBEDDER_VERSION STREQUAL "")
+  execute_process(
+    COMMAND git describe --tags --always --dirty
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_DESCRIBE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+    RESULT_VARIABLE GIT_DESCRIBE_RESULT
+  )
+  if (GIT_DESCRIBE_RESULT EQUAL 0)
+    # Strip "release/" prefix if present
+    string(REGEX REPLACE "^release/" "" FLUTTER_DRM_EMBEDDER_VERSION "${GIT_DESCRIBE}")
+  else()
+    set(FLUTTER_DRM_EMBEDDER_VERSION "unknown")
+  endif()
 endif()
 message(STATUS "flutter-drm-embedder version: ${FLUTTER_DRM_EMBEDDER_VERSION}")
 
